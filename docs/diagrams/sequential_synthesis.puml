@@ -1,0 +1,31 @@
+@startuml
+title SeqTree Sequential Data Synthesis
+
+start
+:Receive preprocessed tabular data;
+if (User provided variable_order?) then (yes)
+  :Use supplied order;
+else (no)
+  if (optimize_order=True?) then (yes)
+    :Choose greedy order by conditional entropy;
+  else (no)
+    :Use input column order;
+  endif
+endif
+
+:Fit empirical marginal for first variable;
+while (More variables in order?) is (yes)
+  :Fit conditional tree for next variable;
+  :Use previous variables as predictors;
+  :Store empirical target distribution in each leaf;
+endwhile (no)
+
+:Sample first variable from marginal;
+while (More variables to synthesize?) is (yes)
+  :Route partial row through next conditional tree;
+  :Sample next variable from reached leaf;
+  :Append generated value to row;
+endwhile (no)
+:Return synthetic table;
+stop
+@enduml

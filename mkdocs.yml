@@ -1,0 +1,22 @@
+site_name: SeqTree
+site_description: Sequential tree models for tabular synthetic data generation.
+site_url: https://seqtree.readthedocs.io/
+repo_url: https://github.com/seqtree/seqtree
+repo_name: seqtree/seqtree
+
+theme:
+  name: readthedocs
+  highlightjs: true
+
+nav:
+  - Home: index.md
+  - API Reference: api.md
+  - Diagrams: diagrams.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+strict: true

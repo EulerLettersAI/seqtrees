@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from typing import Any
+
+
+def is_pandas_dataframe(value: Any) -> bool:
+    return hasattr(value, "columns") and hasattr(value, "to_dict") and hasattr(value, "__len__")
+
+
+def normalize_table(data: Any) -> tuple[list[dict[str, Any]], list[str], bool]:
+    """Return records, column names, and whether the input looked DataFrame-like."""
+    if is_pandas_dataframe(data):
+        columns = [str(column) for column in data.columns]
+        records = [{str(key): val for key, val in row.items()} for row in data.to_dict("records")]
+        return records, columns, True
+
+    if not isinstance(data, Sequence) or isinstance(data, (str, bytes)):
+        raise TypeError("X must be a pandas DataFrame, a list of dictionaries, or a list of rows.")
+
+    rows = list(data)
+    if not rows:
+        raise ValueError("X must contain at least one row.")
+
+    first = rows[0]
+    if isinstance(first, Mapping):
+        columns = [str(column) for column in first.keys()]
+        records = []
+        for row in rows:
+            if not isinstance(row, Mapping):
+                raise TypeError("All rows must use the same representation.")
+            records.append({str(key): value for key, value in row.items()})
+        return records, columns, False
+
+    if isinstance(first, Sequence) and not isinstance(first, (str, bytes)):
+        width = len(first)
+        columns = [f"x{i}" for i in range(width)]
+        records = []
+        for row in rows:
+            if not isinstance(row, Sequence) or isinstance(row, (str, bytes)) or len(row) != width:
+                raise TypeError("All rows must be sequences with the same length.")
+            records.append({columns[i]: value for i, value in enumerate(row)})
+        return records, columns, False
+
+    raise TypeError("Rows must be dictionaries or sequences.")
+
+
+def resolve_columns(columns: list[str], requested: Sequence[str | int] | None) -> list[str]:
+    if requested is None:
+        return list(columns)
+
+    resolved = []
+    for item in requested:
+        if isinstance(item, int):
+            try:
+                resolved.append(columns[item])
+            except IndexError as exc:
+                raise ValueError(f"Column index out of range: {item}") from exc
+        else:
+            name = str(item)
+            if name not in columns:
+                raise ValueError(f"Unknown column in variable_order: {name!r}")
+            resolved.append(name)
+
+    if len(set(resolved)) != len(resolved):
+        raise ValueError("variable_order cannot contain duplicate columns.")
+    if set(resolved) != set(columns):
+        missing = sorted(set(columns) - set(resolved))
+        extra = sorted(set(resolved) - set(columns))
+        raise ValueError(f"variable_order must include every column exactly once; missing={missing}, extra={extra}")
+    return resolved
+
+
+def is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)

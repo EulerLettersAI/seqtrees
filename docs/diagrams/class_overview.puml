@@ -1,0 +1,34 @@
+@startuml
+title SeqTree Class Overview
+
+class SequentialTreeSynthesizer {
+  +fit(X, y=None)
+  +sample(n_samples=1, random_state=None, as_dataframe=None)
+  +fit_sample(X, n_samples, random_state=None)
+  +get_variable_order()
+  +to_puml()
+}
+
+class ConditionalTree {
+  +fit(records, features, target)
+  +sample(row, rng)
+}
+
+class TreeNode {
+  +distribution
+  +split
+  +left
+  +right
+}
+
+class EmpiricalDistribution {
+  +sample(rng)
+  +entropy()
+  +probability(value, alpha=1.0)
+}
+
+SequentialTreeSynthesizer "1" o-- "1" EmpiricalDistribution : first variable
+SequentialTreeSynthesizer "1" o-- "0..*" ConditionalTree : later variables
+ConditionalTree "1" o-- "1..*" TreeNode
+TreeNode "1" o-- "1" EmpiricalDistribution
+@enduml

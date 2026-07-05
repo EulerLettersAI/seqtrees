@@ -1,0 +1,214 @@
+from __future__ import annotations
+
+import random
+from typing import Any, Sequence
+
+from ._backends import SUPPORTED_TREE_BACKENDS, create_tree_backend
+from ._distributions import EmpiricalDistribution, entropy
+from ._parallel import parallel_map, resolve_n_jobs
+from ._utils import normalize_table, resolve_columns
+
+
+class SequentialTreeSynthesizer:
+    """Sequential tree synthesizer with a scikit-learn-like estimator API.
+
+    The fitted model factorizes a table as:
+
+    ``P(X_1, ..., X_d) = P(X_1) * P(X_2 | X_1) * ... * P(X_d | X_1, ..., X_{d-1})``.
+
+    Each conditional distribution is represented by an empirical tree whose
+    leaves store observed target values. Input data is assumed to be
+    preprocessed into a model-ready tabular representation.
+    """
+
+    def __init__(
+        self,
+        *,
+        variable_order: Sequence[str | int] | None = None,
+        optimize_order: bool = False,
+        max_depth: int = 5,
+        min_samples_leaf: int = 5,
+        min_impurity_decrease: float = 1e-9,
+        max_thresholds: int = 16,
+        tree_backend: str = "auto",
+        n_jobs: int | None = 1,
+        random_state: int | None = None,
+    ) -> None:
+        self.variable_order = variable_order
+        self.optimize_order = optimize_order
+        self.max_depth = max_depth
+        self.min_samples_leaf = min_samples_leaf
+        self.min_impurity_decrease = min_impurity_decrease
+        self.max_thresholds = max_thresholds
+        self.tree_backend = tree_backend
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+    def fit(self, X: Any, y: Any = None) -> "SequentialTreeSynthesizer":
+        """Fit the sequential tree model.
+
+        Parameters
+        ----------
+        X:
+            A pandas DataFrame, list of dictionaries, or list of row sequences.
+        y:
+            Ignored. Present for compatibility with estimator conventions.
+        """
+        del y
+        records, columns, dataframe_input = normalize_table(X)
+        self._validate_params()
+        if not columns:
+            raise ValueError("X must contain at least one column.")
+        self.n_jobs_ = resolve_n_jobs(self.n_jobs)
+
+        if self.variable_order is not None:
+            order = resolve_columns(columns, self.variable_order)
+        elif self.optimize_order:
+            order = self._optimize_order(records, columns)
+        else:
+            order = list(columns)
+
+        self.feature_names_in_ = list(columns)
+        self.n_features_in_ = len(columns)
+        self.variable_order_ = order
+        self.dataframe_input_ = dataframe_input
+        self.marginal_ = EmpiricalDistribution([record[order[0]] for record in records])
+        self.trees_: dict[str, Any] = {}
+        self._backend_n_jobs_ = 1 if self.n_jobs_ > 1 and len(order[1:]) > 1 else self.n_jobs_
+
+        fitted_trees = parallel_map(
+            lambda item: self._fit_conditional_tree(records, order, item),
+            list(enumerate(order[1:], start=1)),
+            self.n_jobs_,
+        )
+        self.trees_ = {target: tree for target, tree in fitted_trees}
+
+        self.is_fitted_ = True
+        return self
+
+    def sample(
+        self,
+        n_samples: int = 1,
+        *,
+        random_state: int | None = None,
+        as_dataframe: bool | None = None,
+        n_jobs: int | None = None,
+    ) -> Any:
+        """Generate synthetic rows from the fitted model."""
+        self._check_is_fitted()
+        if n_samples < 0:
+            raise ValueError("n_samples must be non-negative.")
+
+        rng = random.Random(self.random_state if random_state is None else random_state)
+        seeds = [rng.randrange(0, 2**63) for _ in range(n_samples)]
+        sample_jobs = self.n_jobs_ if n_jobs is None else resolve_n_jobs(n_jobs)
+        rows = parallel_map(self._sample_one, seeds, sample_jobs)
+
+        if as_dataframe is None:
+            as_dataframe = self.dataframe_input_
+        if as_dataframe:
+            try:
+                import pandas as pd
+            except ImportError as exc:
+                raise ImportError("Install seqtree[pandas] to return pandas DataFrames.") from exc
+            return pd.DataFrame(rows, columns=self.feature_names_in_)
+        return rows
+
+    def fit_sample(self, X: Any, n_samples: int, *, random_state: int | None = None) -> Any:
+        """Fit the model and immediately sample synthetic rows."""
+        return self.fit(X).sample(n_samples, random_state=random_state)
+
+    def get_variable_order(self) -> list[str]:
+        """Return the learned or user-specified variable order."""
+        self._check_is_fitted()
+        return list(self.variable_order_)
+
+    def to_puml(self) -> str:
+        """Render the fitted sequential dependency chain as PlantUML."""
+        self._check_is_fitted()
+        lines = ["@startuml", "title SeqTree learned sequential model", "left to right direction"]
+        for column in self.variable_order_:
+            lines.append(f'node "{column}" as {self._puml_id(column)}')
+        for left, right in zip(self.variable_order_, self.variable_order_[1:]):
+            lines.append(f"{self._puml_id(left)} --> {self._puml_id(right)}")
+        lines.append("@enduml")
+        return "\n".join(lines)
+
+    def _optimize_order(self, records: list[dict[str, Any]], columns: list[str]) -> list[str]:
+        remaining = set(columns)
+        order = [min(columns, key=lambda column: entropy([record[column] for record in records]))]
+        remaining.remove(order[0])
+
+        while remaining:
+            self._backend_n_jobs_ = 1 if self.n_jobs_ > 1 and len(remaining) > 1 else self.n_jobs_
+            scores = parallel_map(
+                lambda candidate: (candidate, self._order_candidate_score(records, order, candidate)),
+                sorted(remaining),
+                self.n_jobs,
+            )
+            best_column, _ = min(scores, key=lambda item: item[1])
+            order.append(best_column)
+            remaining.remove(best_column)
+        return order
+
+    def _fit_conditional_tree(
+        self,
+        records: list[dict[str, Any]],
+        order: list[str],
+        item: tuple[int, str],
+    ) -> tuple[str, Any]:
+        index, target = item
+        tree = create_tree_backend(
+            self.tree_backend,
+            max_depth=self.max_depth,
+            min_samples_leaf=self.min_samples_leaf,
+            min_impurity_decrease=self.min_impurity_decrease,
+            max_thresholds=self.max_thresholds,
+            random_state=None if self.random_state is None else self.random_state + index,
+            n_jobs=self._backend_n_jobs(),
+        )
+        tree.fit(records, order[:index], target)
+        return target, tree
+
+    def _order_candidate_score(self, records: list[dict[str, Any]], order: list[str], candidate: str) -> float:
+        tree = create_tree_backend(
+            self.tree_backend,
+            max_depth=min(self.max_depth, 3),
+            min_samples_leaf=self.min_samples_leaf,
+            min_impurity_decrease=self.min_impurity_decrease,
+            max_thresholds=self.max_thresholds,
+            random_state=self.random_state,
+            n_jobs=self._backend_n_jobs(),
+        ).fit(records, order, candidate)
+        return tree.conditional_entropy(records)
+
+    def _sample_one(self, seed: int) -> dict[str, Any]:
+        rng = random.Random(seed)
+        row = {}
+        first = self.variable_order_[0]
+        row[first] = self.marginal_.sample(rng)
+        for target in self.variable_order_[1:]:
+            row[target] = self.trees_[target].sample(row, rng)
+        return {column: row[column] for column in self.feature_names_in_}
+
+    def _backend_n_jobs(self) -> int:
+        return getattr(self, "_backend_n_jobs_", getattr(self, "n_jobs_", 1))
+
+    def _validate_params(self) -> None:
+        if self.max_depth < 0:
+            raise ValueError("max_depth must be non-negative.")
+        if self.min_samples_leaf < 1:
+            raise ValueError("min_samples_leaf must be at least 1.")
+        if self.max_thresholds < 1:
+            raise ValueError("max_thresholds must be at least 1.")
+        if self.tree_backend not in SUPPORTED_TREE_BACKENDS:
+            raise ValueError(f"tree_backend must be one of {sorted(SUPPORTED_TREE_BACKENDS)}.")
+        resolve_n_jobs(self.n_jobs)
+
+    def _check_is_fitted(self) -> None:
+        if not getattr(self, "is_fitted_", False):
+            raise ValueError("This SequentialTreeSynthesizer instance is not fitted yet. Call fit first.")
+
+    @staticmethod
+    def _puml_id(name: str) -> str:
+        return "v_" + "".join(char if char.isalnum() else "_" for char in str(name))
