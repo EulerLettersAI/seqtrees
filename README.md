@@ -10,16 +10,18 @@ conventions:
 from seqtree import SequentialTreeSynthesizer
 
 data = [
-    {"age": 24, "sex_code": 0, "income_bin": 1, "risk_code": 0},
-    {"age": 31, "sex_code": 1, "income_bin": 1, "risk_code": 0},
-    {"age": 67, "sex_code": 0, "income_bin": 3, "risk_code": 2},
-    {"age": 73, "sex_code": 1, "income_bin": 3, "risk_code": 2},
+    {"age": 24.5, "sex_code": 0, "income_bin": 1, "risk_code": 0},
+    {"age": 31.2, "sex_code": 1, "income_bin": 1, "risk_code": 0},
+    {"age": 67.4, "sex_code": 0, "income_bin": 3, "risk_code": 2},
+    {"age": 73.0, "sex_code": 1, "income_bin": 3, "risk_code": 2},
 ]
 
 model = SequentialTreeSynthesizer(
     variable_order=["age", "sex_code", "income_bin", "risk_code"],
     tree_backend="auto",
     continuous_strategy="empirical",
+    continuous_columns=["age"],
+    discrete_columns=["sex_code", "income_bin", "risk_code"],
     n_jobs=-1,
     random_state=7,
 )
@@ -39,10 +41,16 @@ later variable is sampled from a conditional decision tree trained on the
 previous variables in the sequence. This mirrors the sequential data synthesis
 workflow shown in Figure 1 of the attached paper (`ocaa249.pdf`).
 
-SeqTree expects model-ready, preprocessed data. It does not encode raw
-categorical columns. Categorical variables should be converted before `fit`,
-for example by your preprocessing library, and passed as stable numeric codes
-or bins such as `sex_code`, `income_bin`, and `risk_code`.
+SeqTree expects model-ready, preprocessed data with no null values. It accepts
+only:
+
+- continuous variables as floats;
+- discrete variables as integer category codes, including binary 0/1 variables.
+
+It does not encode raw categorical columns, and it is not intended for one-hot
+encoded inputs. Categorical variables should be mapped before `fit`, for
+example by your preprocessing library, and passed as stable integer codes or
+bins such as `sex_code`, `income_bin`, and `risk_code`.
 
 By default, all generated values are sampled from observed training values.
 For continuous float columns, you can opt into within-leaf interpolation:
@@ -51,8 +59,12 @@ For continuous float columns, you can opt into within-leaf interpolation:
 model = SequentialTreeSynthesizer(
     continuous_strategy="interpolate",
     continuous_columns=["age", "bmi"],
+    discrete_columns=["sex_code", "income_bin", "risk_code"],
 )
 ```
+
+When type lists are supplied, `continuous_columns` and `discrete_columns` must
+classify every input column exactly once.
 
 ## Features
 

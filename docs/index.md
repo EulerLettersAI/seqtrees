@@ -22,17 +22,17 @@ variable until the row is complete.
 - empirical leaf distributions, so sampling preserves values seen in the
   preprocessed training data.
 
-The current implementation assumes preprocessing has already happened. For
-example, raw categorical encoding, numeric binning, missing-value handling, and
-domain-specific cleaning can be handled before calling `fit`.
+The current implementation assumes preprocessing has already happened. SeqTree
+expects model-ready data with no null values. It accepts only continuous
+variables represented as floats and discrete variables represented as integer
+category codes. Binary variables are ordinary discrete variables with codes
+`0` and `1`.
 
 SeqTree intentionally does not include encoders, imputers, scalers, or category
 mapping utilities. If the source data contains categories such as `"female"`,
-`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. The compiled
-backends (`"lightgbm"` and `"sklearn"`) require numeric preprocessed feature and
-target values. The native backend can operate on discrete Python values, but
-the recommended public workflow is still to preprocess categorical variables
-outside SeqTree so the generated output stays in the same encoded domain.
+`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. For SeqTree,
+that usually means label encoding categorical variables to integer codes and
+passing naturally continuous variables as floats.
 
 ## Continuous Variables
 
@@ -44,14 +44,25 @@ you can opt into interpolation inside the reached leaf distribution:
 model = SequentialTreeSynthesizer(
     continuous_strategy="interpolate",
     continuous_columns=["age", "bmi"],
+    discrete_columns=["sex_code", "risk_code"],
 )
 ```
 
-When `continuous_columns=None`, SeqTree infers float-valued columns as
-continuous and leaves integer columns empirical. This is intentional because
-integer columns often represent external categorical codes or bins. If an
-integer-valued column is truly continuous, pass it explicitly in
-`continuous_columns`.
+SeqTree can infer variable types when both `continuous_columns` and
+`discrete_columns` are omitted: all-float columns become continuous and all-int
+columns become discrete. For production use, prefer declaring both lists:
+
+```python
+model = SequentialTreeSynthesizer(
+    continuous_columns=["age", "bmi"],
+    discrete_columns=["sex_code", "income_bin", "risk_code"],
+)
+```
+
+When either type list is supplied, the two lists must classify every input
+column exactly once. One-hot encoded inputs are intentionally out of scope; keep
+each categorical field as a single integer-coded variable before fitting
+SeqTree.
 
 ## Performance
 

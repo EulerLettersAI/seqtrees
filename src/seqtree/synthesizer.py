@@ -6,7 +6,15 @@ from typing import Any, Sequence
 from ._backends import SUPPORTED_TREE_BACKENDS, create_tree_backend
 from ._distributions import EmpiricalDistribution, entropy
 from ._parallel import parallel_map, resolve_n_jobs
-from ._utils import normalize_table, resolve_column_subset, resolve_columns
+from ._utils import (
+    is_float_value,
+    is_integer_code,
+    normalize_table,
+    resolve_column_subset,
+    resolve_columns,
+    validate_no_nulls,
+    validate_variable_types,
+)
 
 
 class SequentialTreeSynthesizer:
@@ -17,8 +25,9 @@ class SequentialTreeSynthesizer:
     ``P(X_1, ..., X_d) = P(X_1) * P(X_2 | X_1) * ... * P(X_d | X_1, ..., X_{d-1})``.
 
     Each conditional distribution is represented by an empirical tree whose
-    leaves store observed target values. Input data is assumed to be
-    preprocessed into a model-ready tabular representation.
+    leaves store observed target values. Input data must be preprocessed into a
+    model-ready numeric representation with no null values: continuous
+    variables as floats and discrete variables as integer category codes.
 
     Parameters
     ----------
@@ -47,8 +56,14 @@ class SequentialTreeSynthesizer:
         ``continuous_columns``.
     continuous_columns:
         Optional subset of column names or integer positions to treat as
-        continuous. If omitted, float-valued columns are inferred as continuous
-        and integer columns are left empirical.
+        continuous float variables. If either ``continuous_columns`` or
+        ``discrete_columns`` is supplied, the two lists must classify every
+        input column exactly once.
+    discrete_columns:
+        Optional subset of column names or integer positions that must contain
+        integer category codes. Binary variables are treated as ordinary
+        discrete variables. One-hot encoded inputs are intentionally out of
+        scope.
     n_jobs:
         Number of parallel workers. Use ``-1`` to use all available cores.
     random_state:
@@ -64,6 +79,8 @@ class SequentialTreeSynthesizer:
         Learned or user-supplied variable order.
     continuous_columns_:
         Set of columns treated as continuous for interpolation.
+    discrete_columns_:
+        Set of columns treated as discrete integer category codes.
     marginal_:
         Empirical distribution for the first variable in ``variable_order_``.
     trees_:
@@ -84,6 +101,7 @@ class SequentialTreeSynthesizer:
         tree_backend: str = "auto",
         continuous_strategy: str = "empirical",
         continuous_columns: Sequence[str | int] | None = None,
+        discrete_columns: Sequence[str | int] | None = None,
         n_jobs: int | None = 1,
         random_state: int | None = None,
     ) -> None:
@@ -96,6 +114,7 @@ class SequentialTreeSynthesizer:
         self.tree_backend = tree_backend
         self.continuous_strategy = continuous_strategy
         self.continuous_columns = continuous_columns
+        self.discrete_columns = discrete_columns
         self.n_jobs = n_jobs
         self.random_state = random_state
 
@@ -106,6 +125,8 @@ class SequentialTreeSynthesizer:
         ----------
         X:
             A pandas DataFrame, list of dictionaries, or list of row sequences.
+            Values must be floats for continuous variables and integers for
+            discrete variables. Null values are not accepted.
         y:
             Ignored. Present for compatibility with estimator conventions.
 
@@ -120,6 +141,13 @@ class SequentialTreeSynthesizer:
         if not columns:
             raise ValueError("X must contain at least one column.")
         self.n_jobs_ = resolve_n_jobs(self.n_jobs)
+        validate_no_nulls(records, columns)
+        continuous_columns, discrete_columns = self._resolve_variable_types(records, columns)
+        validate_variable_types(
+            records,
+            continuous_columns=continuous_columns,
+            discrete_columns=discrete_columns,
+        )
 
         if self.variable_order is not None:
             order = resolve_columns(columns, self.variable_order)
@@ -131,7 +159,8 @@ class SequentialTreeSynthesizer:
         self.feature_names_in_ = list(columns)
         self.n_features_in_ = len(columns)
         self.variable_order_ = order
-        self.continuous_columns_ = self._resolve_continuous_columns(records, columns)
+        self.continuous_columns_ = continuous_columns
+        self.discrete_columns_ = discrete_columns
         self.dataframe_input_ = dataframe_input
         self.marginal_ = EmpiricalDistribution([record[order[0]] for record in records])
         self.trees_: dict[str, Any] = {}
@@ -309,15 +338,52 @@ class SequentialTreeSynthesizer:
     def _should_interpolate(self, column: str) -> bool:
         return self.continuous_strategy == "interpolate" and column in self.continuous_columns_
 
-    def _resolve_continuous_columns(self, records: list[dict[str, Any]], columns: list[str]) -> set[str]:
-        if self.continuous_columns is not None:
-            return set(resolve_column_subset(columns, self.continuous_columns, parameter="continuous_columns"))
-        inferred = set()
+    def _resolve_variable_types(self, records: list[dict[str, Any]], columns: list[str]) -> tuple[set[str], set[str]]:
+        if self.continuous_columns is None and self.discrete_columns is None:
+            return self._infer_variable_types(records, columns)
+
+        continuous_columns = (
+            set(resolve_column_subset(columns, self.continuous_columns, parameter="continuous_columns"))
+            if self.continuous_columns is not None
+            else set()
+        )
+        discrete_columns = (
+            set(resolve_column_subset(columns, self.discrete_columns, parameter="discrete_columns"))
+            if self.discrete_columns is not None
+            else set()
+        )
+
+        overlap = continuous_columns & discrete_columns
+        if overlap:
+            raise ValueError(f"Columns cannot be both continuous and discrete: {sorted(overlap)}")
+
+        declared = continuous_columns | discrete_columns
+        missing = set(columns) - declared
+        extra = declared - set(columns)
+        if missing or extra:
+            raise ValueError(
+                "continuous_columns and discrete_columns must classify every column exactly once; "
+                f"missing={sorted(missing)}, extra={sorted(extra)}"
+            )
+        return continuous_columns, discrete_columns
+
+    @staticmethod
+    def _infer_variable_types(records: list[dict[str, Any]], columns: list[str]) -> tuple[set[str], set[str]]:
+        continuous_columns = set()
+        discrete_columns = set()
         for column in columns:
-            values = [record[column] for record in records if record.get(column) is not None]
-            if values and all(isinstance(value, float) and not isinstance(value, bool) for value in values):
-                inferred.add(column)
-        return inferred
+            values = [record[column] for record in records]
+            if all(is_float_value(value) for value in values):
+                continuous_columns.add(column)
+            elif all(is_integer_code(value) for value in values):
+                discrete_columns.add(column)
+            else:
+                raise TypeError(
+                    f"Could not infer variable type for column {column!r}. "
+                    "SeqTree accepts only float continuous variables and integer-coded discrete variables; "
+                    "pass continuous_columns and discrete_columns explicitly if needed."
+                )
+        return continuous_columns, discrete_columns
 
     def _validate_params(self) -> None:
         if self.max_depth < 0:

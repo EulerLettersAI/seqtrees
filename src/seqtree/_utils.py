@@ -97,6 +97,14 @@ def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def is_integer_code(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def is_float_value(value: Any) -> bool:
+    return isinstance(value, float) and not isinstance(value, bool)
+
+
 def require_numeric_values(records: list[dict[str, Any]], columns: list[str], *, backend: str) -> None:
     for column in columns:
         for row_index, record in enumerate(records):
@@ -107,4 +115,36 @@ def require_numeric_values(records: list[dict[str, Any]], columns: list[str], *,
                 raise TypeError(
                     f"tree_backend={backend!r} requires preprocessed numeric data; "
                     f"column {column!r} has non-numeric value {value!r} at row {row_index}."
+                )
+
+
+def validate_no_nulls(records: list[dict[str, Any]], columns: list[str]) -> None:
+    for row_index, record in enumerate(records):
+        for column in columns:
+            if record.get(column) is None:
+                raise ValueError(f"SeqTree does not accept null values; found null in column {column!r} at row {row_index}.")
+
+
+def validate_variable_types(
+    records: list[dict[str, Any]],
+    *,
+    continuous_columns: set[str],
+    discrete_columns: set[str],
+) -> None:
+    for column in continuous_columns:
+        for row_index, record in enumerate(records):
+            value = record[column]
+            if not is_float_value(value):
+                raise TypeError(
+                    f"continuous column {column!r} must contain float values; "
+                    f"found {value!r} at row {row_index}."
+                )
+
+    for column in discrete_columns:
+        for row_index, record in enumerate(records):
+            value = record[column]
+            if not is_integer_code(value):
+                raise TypeError(
+                    f"discrete column {column!r} must contain integer category codes; "
+                    f"found {value!r} at row {row_index}."
                 )

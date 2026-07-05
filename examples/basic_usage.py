@@ -31,6 +31,7 @@ model = SequentialTreeSynthesizer(
     tree_backend="auto",
     continuous_strategy="interpolate",
     continuous_columns=["age", "bmi"],
+    discrete_columns=["sex_code", "income_bin", "risk_code"],
     n_jobs=-1,
     random_state=42,
     min_samples_leaf=1,

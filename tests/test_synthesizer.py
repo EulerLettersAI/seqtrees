@@ -53,10 +53,10 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
 
     def test_row_sequences_are_supported(self):
         rows = [
-            [0, 0, "A"],
-            [0, 1, "A"],
-            [1, 0, "B"],
-            [1, 1, "B"],
+            [0, 0, 1],
+            [0, 1, 1],
+            [1, 0, 2],
+            [1, 1, 2],
         ]
         model = SequentialTreeSynthesizer(variable_order=[0, 1, 2], min_samples_leaf=1)
 
@@ -108,6 +108,7 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
             variable_order=["score", "risk_code"],
             continuous_strategy="interpolate",
             continuous_columns=["score"],
+            discrete_columns=["risk_code"],
             min_samples_leaf=1,
         ).fit(data)
 
@@ -121,6 +122,76 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         model = SequentialTreeSynthesizer(continuous_strategy="interpolate", min_samples_leaf=1).fit(DATA)
 
         self.assertEqual(model.continuous_columns_, set())
+
+    def test_explicit_variable_types_are_required_to_cover_every_column(self):
+        model = SequentialTreeSynthesizer(
+            continuous_columns=["age"],
+            discrete_columns=["sex_code"],
+            min_samples_leaf=1,
+        )
+
+        with self.assertRaises(ValueError):
+            model.fit(DATA)
+
+    def test_discrete_columns_accept_binary_as_categorical_codes(self):
+        data = [
+            {"age": 20.0, "flag": 0, "risk_code": 0},
+            {"age": 30.0, "flag": 1, "risk_code": 1},
+        ]
+        model = SequentialTreeSynthesizer(
+            continuous_columns=["age"],
+            discrete_columns=["flag", "risk_code"],
+            continuous_strategy="interpolate",
+            min_samples_leaf=1,
+        ).fit(data)
+
+        rows = model.sample(10, random_state=4)
+
+        self.assertEqual(model.continuous_columns_, {"age"})
+        self.assertEqual(model.discrete_columns_, {"flag", "risk_code"})
+        self.assertTrue(all(row["flag"] in {0, 1} for row in rows))
+
+    def test_discrete_columns_reject_float_values(self):
+        data = [
+            {"flag": 0.0, "score": 1.0},
+            {"flag": 1.0, "score": 2.0},
+        ]
+        model = SequentialTreeSynthesizer(
+            continuous_columns=["score"],
+            discrete_columns=["flag"],
+            min_samples_leaf=1,
+        )
+
+        with self.assertRaises(TypeError):
+            model.fit(data)
+
+    def test_raw_categorical_values_are_rejected(self):
+        data = [
+            {"group": "A", "score": 1.0},
+            {"group": "B", "score": 2.0},
+        ]
+        model = SequentialTreeSynthesizer(
+            continuous_columns=["score"],
+            discrete_columns=["group"],
+            min_samples_leaf=1,
+        )
+
+        with self.assertRaises(TypeError):
+            model.fit(data)
+
+    def test_null_values_are_rejected(self):
+        data = [
+            {"group_code": 0, "score": 1.0},
+            {"group_code": 1, "score": None},
+        ]
+        model = SequentialTreeSynthesizer(
+            continuous_columns=["score"],
+            discrete_columns=["group_code"],
+            min_samples_leaf=1,
+        )
+
+        with self.assertRaises(ValueError):
+            model.fit(data)
 
     def test_lightgbm_backend_is_optional(self):
         model = SequentialTreeSynthesizer(tree_backend="lightgbm", min_samples_leaf=1, n_jobs=1)
