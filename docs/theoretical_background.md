@@ -99,7 +99,8 @@ At the end, SeqTree has generated one complete synthetic row.
 ## Choosing Variable Order
 
 The variable order matters because each later variable is conditioned on all
-earlier variables. SeqTree supports three options.
+earlier variables, a known issue in sequential-tree synthesis
+[@khaled_el_mosquera_zheng_2020]. SeqTree supports three options.
 
 ### Use Input Column Order
 
@@ -149,7 +150,86 @@ model = SequentialTreeSynthesizer(
 
 The optimizer starts with a low-entropy variable and repeatedly chooses the next
 variable with the lowest tree-estimated conditional entropy given the variables
-already selected.
+already selected. This combines entropy-based tree modeling
+[@quinlan1986id3] with a greedy information-theoretic forward-selection
+principle [@brown2012conditional_likelihood].
+
+Let the table contain variables
+
+$$
+\mathcal{X} = \{X_1, X_2, \ldots, X_d\}
+$$
+
+and let \(S_t\) be the set of variables already selected after \(t\) steps.
+SeqTree first chooses the variable with the smallest empirical entropy:
+
+$$
+X_{\pi_1}
+=
+\arg\min_{X_j \in \mathcal{X}} \widehat{H}(X_j),
+$$
+
+where the empirical entropy is
+
+$$
+\widehat{H}(X_j)
+=
+-
+\sum_{x \in \mathcal{V}_j}
+\widehat{p}_j(x)\log_2 \widehat{p}_j(x).
+$$
+
+Here, \(\mathcal{V}_j\) is the set of observed values of \(X_j\), and
+\(\widehat{p}_j(x)\) is the empirical frequency of value \(x\) in the training
+data.
+
+After the first variable, SeqTree uses a greedy forward selection rule. For
+each remaining candidate variable \(X_c \notin S_t\), it fits a shallow
+conditional tree
+
+$$
+T_c : S_t \rightarrow X_c
+$$
+
+using the variables in \(S_t\) as predictors and \(X_c\) as the target. The
+candidate is scored by the average entropy of the leaf distribution reached by
+each training row:
+
+$$
+\widehat{H}_T(X_c \mid S_t)
+=
+\frac{1}{n}
+\sum_{i=1}^{n}
+\widehat{H}\left(X_c \mid L_T(s_i)\right),
+$$
+
+where \(s_i\) is row \(i\) restricted to the already selected variables
+\(S_t\), and \(L_T(s_i)\) is the leaf reached by that row in the fitted
+candidate tree. Equivalently, if the tree leaves are
+\(\mathcal{L}(T_c)\), this is the leaf-size-weighted entropy:
+
+$$
+\widehat{H}_T(X_c \mid S_t)
+=
+\sum_{\ell \in \mathcal{L}(T_c)}
+\frac{n_\ell}{n}
+\widehat{H}(X_c \mid \ell).
+$$
+
+SeqTree then appends the candidate with the smallest score:
+
+$$
+X_{\pi_{t+1}}
+=
+\arg\min_{X_c \in \mathcal{X} \setminus S_t}
+\widehat{H}_T(X_c \mid S_t).
+$$
+
+This is called greedy because the choice at step \(t+1\) only minimizes the
+current conditional-entropy score. It does not search over all \(d!\) possible
+variable orders. In the implementation, these scoring trees are capped at depth
+\(\min(\texttt{max\_depth}, 3)\), so the heuristic remains cheaper than fitting
+full trees for every possible ordering.
 
 After fitting, inspect the order:
 

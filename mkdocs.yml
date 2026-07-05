@@ -12,17 +12,23 @@ nav:
   - Home: index.md
   - Theoretical Background: theoretical_background.md
   - Comparison: comparison.md
+  - References: references.md
   - API Reference: api.md
   - Diagrams: diagrams.md
 
 markdown_extensions:
   - admonition
+  - footnotes
   - tables
+  - pymdownx.arithmatex:
+      generic: true
   - toc:
       permalink: true
 
 plugins:
   - search
+  - bibtex:
+      bib_file: docs/references.bib
   - mkdocstrings:
       handlers:
         python:
@@ -31,5 +37,11 @@ plugins:
             show_source: true
             show_root_heading: true
             show_signature_annotations: true
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - css/math.css
 
 strict: true

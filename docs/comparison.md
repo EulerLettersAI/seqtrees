@@ -62,5 +62,4 @@ synthetic data machinery.
 ## References
 
 - Synthpop CRAN manual: <https://cran.r-project.org/web/packages/synthpop/synthpop.pdf>
-- Nowok, Raab, and Dibben. "synthpop: Bespoke Creation of Synthetic Data in R."
-  *Journal of Statistical Software*, 2016.
+- synthpop package paper [@nowok2016synthpop].

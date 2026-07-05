@@ -1,2 +1,4 @@
 mkdocs>=1.6,<2
 mkdocstrings[python]>=0.25,<1
+mkdocs-bibtex>=2,<3
+pymdown-extensions>=10,<11

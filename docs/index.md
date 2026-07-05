@@ -8,8 +8,7 @@ conditional distributions. Given preprocessed data with variables
 P(X1, X2, ..., Xd) = P(X1) P(X2 | X1) ... P(Xd | X1, ..., Xd-1)
 ```
 
-This implementation follows the sequential synthesis idea shown in Figure 1 of
-the attached paper (`ocaa249.pdf`): generate the first variable, append it to
+This implementation follows the sequential synthesis idea shown in [@khaled_el_mosquera_zheng_2020]: generate the first variable, append it to
 the synthetic row, then use the generated prefix to synthesize the next
 variable until the row is complete.
 
@@ -130,12 +129,3 @@ PlantUML sources:
 
 - [diagrams/sequential_synthesis.puml](diagrams/sequential_synthesis.puml)
 - [diagrams/class_overview.puml](diagrams/class_overview.puml)
-
-## References
-
-- Attached paper: `ocaa249.pdf`, Figure 1 sequential data synthesis workflow.
-- Breiman, Friedman, Olshen, and Stone. *Classification and Regression Trees*.
-  Wadsworth, 1984.
-- Quinlan. "Induction of Decision Trees." *Machine Learning*, 1986.
-- Ke et al. "LightGBM: A Highly Efficient Gradient Boosting Decision Tree."
-  NeurIPS, 2017.
