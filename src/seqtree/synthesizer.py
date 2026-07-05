@@ -6,7 +6,7 @@ from typing import Any, Sequence
 from ._backends import SUPPORTED_TREE_BACKENDS, create_tree_backend
 from ._distributions import EmpiricalDistribution, entropy
 from ._parallel import parallel_map, resolve_n_jobs
-from ._utils import normalize_table, resolve_columns
+from ._utils import normalize_table, resolve_column_subset, resolve_columns
 
 
 class SequentialTreeSynthesizer:
@@ -19,6 +19,57 @@ class SequentialTreeSynthesizer:
     Each conditional distribution is represented by an empirical tree whose
     leaves store observed target values. Input data is assumed to be
     preprocessed into a model-ready tabular representation.
+
+    Parameters
+    ----------
+    variable_order:
+        Optional sequence of column names or integer positions. When supplied,
+        it must contain every input column exactly once.
+    optimize_order:
+        If ``True`` and ``variable_order`` is not supplied, choose a greedy
+        variable order using tree-estimated conditional entropy.
+    max_depth:
+        Maximum depth for each conditional tree.
+    min_samples_leaf:
+        Minimum number of records required in each child after a split.
+    min_impurity_decrease:
+        Minimum impurity decrease required for a tree split.
+    max_thresholds:
+        Maximum number of numeric threshold candidates considered by the native
+        backend for each feature.
+    tree_backend:
+        Tree backend to use: ``"auto"``, ``"native"``, ``"sklearn"``, or
+        ``"lightgbm"``. ``"auto"`` prefers LightGBM when installed, then
+        scikit-learn, then the native backend.
+    continuous_strategy:
+        ``"empirical"`` samples observed values from each leaf. ``"interpolate"``
+        can generate interpolated values for columns listed in, or inferred by,
+        ``continuous_columns``.
+    continuous_columns:
+        Optional subset of column names or integer positions to treat as
+        continuous. If omitted, float-valued columns are inferred as continuous
+        and integer columns are left empirical.
+    n_jobs:
+        Number of parallel workers. Use ``-1`` to use all available cores.
+    random_state:
+        Optional seed for reproducible sampling.
+
+    Attributes
+    ----------
+    feature_names_in_:
+        Column names seen during fitting.
+    n_features_in_:
+        Number of columns seen during fitting.
+    variable_order_:
+        Learned or user-supplied variable order.
+    continuous_columns_:
+        Set of columns treated as continuous for interpolation.
+    marginal_:
+        Empirical distribution for the first variable in ``variable_order_``.
+    trees_:
+        Mapping from later variable names to fitted conditional tree backends.
+    n_jobs_:
+        Resolved worker count used during fitting.
     """
 
     def __init__(
@@ -31,6 +82,8 @@ class SequentialTreeSynthesizer:
         min_impurity_decrease: float = 1e-9,
         max_thresholds: int = 16,
         tree_backend: str = "auto",
+        continuous_strategy: str = "empirical",
+        continuous_columns: Sequence[str | int] | None = None,
         n_jobs: int | None = 1,
         random_state: int | None = None,
     ) -> None:
@@ -41,6 +94,8 @@ class SequentialTreeSynthesizer:
         self.min_impurity_decrease = min_impurity_decrease
         self.max_thresholds = max_thresholds
         self.tree_backend = tree_backend
+        self.continuous_strategy = continuous_strategy
+        self.continuous_columns = continuous_columns
         self.n_jobs = n_jobs
         self.random_state = random_state
 
@@ -53,6 +108,11 @@ class SequentialTreeSynthesizer:
             A pandas DataFrame, list of dictionaries, or list of row sequences.
         y:
             Ignored. Present for compatibility with estimator conventions.
+
+        Returns
+        -------
+        SequentialTreeSynthesizer
+            The fitted estimator.
         """
         del y
         records, columns, dataframe_input = normalize_table(X)
@@ -71,6 +131,7 @@ class SequentialTreeSynthesizer:
         self.feature_names_in_ = list(columns)
         self.n_features_in_ = len(columns)
         self.variable_order_ = order
+        self.continuous_columns_ = self._resolve_continuous_columns(records, columns)
         self.dataframe_input_ = dataframe_input
         self.marginal_ = EmpiricalDistribution([record[order[0]] for record in records])
         self.trees_: dict[str, Any] = {}
@@ -94,7 +155,28 @@ class SequentialTreeSynthesizer:
         as_dataframe: bool | None = None,
         n_jobs: int | None = None,
     ) -> Any:
-        """Generate synthetic rows from the fitted model."""
+        """Generate synthetic rows from the fitted model.
+
+        Parameters
+        ----------
+        n_samples:
+            Number of synthetic rows to generate.
+        random_state:
+            Optional seed for this sampling call. If omitted, the estimator's
+            ``random_state`` is used.
+        as_dataframe:
+            If ``True``, return a pandas DataFrame. If ``False``, return a list
+            of dictionaries. If omitted, SeqTree returns a DataFrame when the
+            model was fitted with DataFrame-like input.
+        n_jobs:
+            Optional worker count for row generation. If omitted, the fitted
+            model's worker count is reused.
+
+        Returns
+        -------
+        Any
+            Synthetic rows as a list of dictionaries or pandas DataFrame.
+        """
         self._check_is_fitted()
         if n_samples < 0:
             raise ValueError("n_samples must be non-negative.")
@@ -115,16 +197,43 @@ class SequentialTreeSynthesizer:
         return rows
 
     def fit_sample(self, X: Any, n_samples: int, *, random_state: int | None = None) -> Any:
-        """Fit the model and immediately sample synthetic rows."""
+        """Fit the model and immediately sample synthetic rows.
+
+        Parameters
+        ----------
+        X:
+            Training data accepted by :meth:`fit`.
+        n_samples:
+            Number of synthetic rows to generate.
+        random_state:
+            Optional seed for the sampling call.
+
+        Returns
+        -------
+        Any
+            Synthetic rows as a list of dictionaries or pandas DataFrame.
+        """
         return self.fit(X).sample(n_samples, random_state=random_state)
 
     def get_variable_order(self) -> list[str]:
-        """Return the learned or user-specified variable order."""
+        """Return the learned or user-specified variable order.
+
+        Returns
+        -------
+        list[str]
+            Variable names in the order used by the sequential model.
+        """
         self._check_is_fitted()
         return list(self.variable_order_)
 
     def to_puml(self) -> str:
-        """Render the fitted sequential dependency chain as PlantUML."""
+        """Render the fitted sequential dependency chain as PlantUML.
+
+        Returns
+        -------
+        str
+            PlantUML source for the fitted variable-order dependency chain.
+        """
         self._check_is_fitted()
         lines = ["@startuml", "title SeqTree learned sequential model", "left to right direction"]
         for column in self.variable_order_:
@@ -186,13 +295,29 @@ class SequentialTreeSynthesizer:
         rng = random.Random(seed)
         row = {}
         first = self.variable_order_[0]
-        row[first] = self.marginal_.sample(rng)
+        if self._should_interpolate(first):
+            row[first] = self.marginal_.sample_interpolated(rng)
+        else:
+            row[first] = self.marginal_.sample(rng)
         for target in self.variable_order_[1:]:
-            row[target] = self.trees_[target].sample(row, rng)
+            row[target] = self.trees_[target].sample(row, rng, interpolate=self._should_interpolate(target))
         return {column: row[column] for column in self.feature_names_in_}
 
     def _backend_n_jobs(self) -> int:
         return getattr(self, "_backend_n_jobs_", getattr(self, "n_jobs_", 1))
+
+    def _should_interpolate(self, column: str) -> bool:
+        return self.continuous_strategy == "interpolate" and column in self.continuous_columns_
+
+    def _resolve_continuous_columns(self, records: list[dict[str, Any]], columns: list[str]) -> set[str]:
+        if self.continuous_columns is not None:
+            return set(resolve_column_subset(columns, self.continuous_columns, parameter="continuous_columns"))
+        inferred = set()
+        for column in columns:
+            values = [record[column] for record in records if record.get(column) is not None]
+            if values and all(isinstance(value, float) and not isinstance(value, bool) for value in values):
+                inferred.add(column)
+        return inferred
 
     def _validate_params(self) -> None:
         if self.max_depth < 0:
@@ -203,6 +328,8 @@ class SequentialTreeSynthesizer:
             raise ValueError("max_thresholds must be at least 1.")
         if self.tree_backend not in SUPPORTED_TREE_BACKENDS:
             raise ValueError(f"tree_backend must be one of {sorted(SUPPORTED_TREE_BACKENDS)}.")
+        if self.continuous_strategy not in {"empirical", "interpolate"}:
+            raise ValueError("continuous_strategy must be 'empirical' or 'interpolate'.")
         resolve_n_jobs(self.n_jobs)
 
     def _check_is_fitted(self) -> None:

@@ -34,6 +34,25 @@ target values. The native backend can operate on discrete Python values, but
 the recommended public workflow is still to preprocess categorical variables
 outside SeqTree so the generated output stays in the same encoded domain.
 
+## Continuous Variables
+
+SeqTree's default sampling strategy is empirical: every generated value is one
+of the values observed in the training data. For continuous float variables,
+you can opt into interpolation inside the reached leaf distribution:
+
+```python
+model = SequentialTreeSynthesizer(
+    continuous_strategy="interpolate",
+    continuous_columns=["age", "bmi"],
+)
+```
+
+When `continuous_columns=None`, SeqTree infers float-valued columns as
+continuous and leaves integer columns empirical. This is intentional because
+integer columns often represent external categorical codes or bins. If an
+integer-valued column is truly continuous, pass it explicitly in
+`continuous_columns`.
+
 ## Performance
 
 SeqTree can use either:

@@ -19,6 +19,7 @@ data = [
 model = SequentialTreeSynthesizer(
     variable_order=["age", "sex_code", "income_bin", "risk_code"],
     tree_backend="auto",
+    continuous_strategy="empirical",
     n_jobs=-1,
     random_state=7,
 )
@@ -43,6 +44,16 @@ categorical columns. Categorical variables should be converted before `fit`,
 for example by your preprocessing library, and passed as stable numeric codes
 or bins such as `sex_code`, `income_bin`, and `risk_code`.
 
+By default, all generated values are sampled from observed training values.
+For continuous float columns, you can opt into within-leaf interpolation:
+
+```python
+model = SequentialTreeSynthesizer(
+    continuous_strategy="interpolate",
+    continuous_columns=["age", "bmi"],
+)
+```
+
 ## Features
 
 - `fit`, `sample`, and `fit_sample` methods.
@@ -52,6 +63,7 @@ or bins such as `sex_code`, `income_bin`, and `risk_code`.
 - Parallel row synthesis with `sample(..., n_jobs=...)`.
 - Optional LightGBM and scikit-learn backends with `tree_backend="lightgbm"`,
   `tree_backend="sklearn"`, or `tree_backend="auto"`.
+- Optional within-leaf interpolation for continuous float variables.
 - Supports any number of preprocessed variables.
 - Accepts lists of dictionaries, lists of row sequences, and pandas DataFrames
   when pandas is installed.

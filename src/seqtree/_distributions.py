@@ -5,6 +5,8 @@ import random
 from collections import Counter
 from typing import Any
 
+from ._utils import is_number
+
 
 class EmpiricalDistribution:
     """A finite empirical distribution over observed values."""
@@ -27,6 +29,20 @@ class EmpiricalDistribution:
 
     def sample(self, rng: random.Random) -> Any:
         return rng.choices(self.values_, weights=self.weights_, k=1)[0]
+
+    def sample_interpolated(self, rng: random.Random) -> Any:
+        numeric_values = [value for value in self.values_ if is_number(value)]
+        if len(numeric_values) < 2:
+            return self.sample(rng)
+
+        left = self.sample(rng)
+        right = self.sample(rng)
+        if not is_number(left) or not is_number(right):
+            return self.sample(rng)
+        if left == right:
+            return left
+        weight = rng.random()
+        return left + weight * (right - left)
 
     def probability(self, value: Any, alpha: float = 1.0) -> float:
         total = sum(self.weights_)

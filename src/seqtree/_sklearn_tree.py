@@ -62,8 +62,11 @@ class SklearnConditionalTree:
         }
         return self
 
-    def sample(self, row: dict[str, Any], rng) -> Any:
-        return self._distribution_for_row(row).sample(rng)
+    def sample(self, row: dict[str, Any], rng, *, interpolate: bool = False) -> Any:
+        distribution = self._distribution_for_row(row)
+        if interpolate:
+            return distribution.sample_interpolated(rng)
+        return distribution.sample(rng)
 
     def leaf_probability(self, row: dict[str, Any], value: Any, alpha: float = 1.0) -> float:
         return self._distribution_for_row(row).probability(value, alpha=alpha)

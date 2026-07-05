@@ -86,6 +86,42 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
 
         self.assertEqual(model.sample(2)[0].keys(), DATA[0].keys())
 
+    def test_float_columns_are_empirical_by_default(self):
+        data = [
+            {"score": 0.1, "risk_code": 0},
+            {"score": 0.4, "risk_code": 0},
+            {"score": 0.8, "risk_code": 1},
+        ]
+        model = SequentialTreeSynthesizer(variable_order=["score", "risk_code"], min_samples_leaf=1).fit(data)
+
+        rows = model.sample(30, random_state=5)
+
+        self.assertEqual(model.continuous_columns_, {"score"})
+        self.assertTrue(all(row["score"] in {0.1, 0.4, 0.8} for row in rows))
+
+    def test_interpolation_can_generate_new_float_values(self):
+        data = [
+            {"score": 0.0, "risk_code": 0},
+            {"score": 10.0, "risk_code": 1},
+        ]
+        model = SequentialTreeSynthesizer(
+            variable_order=["score", "risk_code"],
+            continuous_strategy="interpolate",
+            continuous_columns=["score"],
+            min_samples_leaf=1,
+        ).fit(data)
+
+        rows = model.sample(50, random_state=11)
+        scores = [row["score"] for row in rows]
+
+        self.assertTrue(any(score not in {0.0, 10.0} for score in scores))
+        self.assertTrue(all(0.0 <= score <= 10.0 for score in scores))
+
+    def test_integer_code_columns_are_not_inferred_continuous(self):
+        model = SequentialTreeSynthesizer(continuous_strategy="interpolate", min_samples_leaf=1).fit(DATA)
+
+        self.assertEqual(model.continuous_columns_, set())
+
     def test_lightgbm_backend_is_optional(self):
         model = SequentialTreeSynthesizer(tree_backend="lightgbm", min_samples_leaf=1, n_jobs=1)
 

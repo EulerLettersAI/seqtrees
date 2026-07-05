@@ -60,10 +60,12 @@ class ConditionalTree:
         self.root_ = self._fit_node(records, depth=0)
         return self
 
-    def sample(self, row: dict[str, Any], rng) -> Any:
+    def sample(self, row: dict[str, Any], rng, *, interpolate: bool = False) -> Any:
         node = self.root_
         while not node.is_leaf:
             node = node.left if node.split.go_left(row) else node.right
+        if interpolate:
+            return node.distribution.sample_interpolated(rng)
         return node.distribution.sample(rng)
 
     def leaf_probability(self, row: dict[str, Any], value: Any, alpha: float = 1.0) -> float:

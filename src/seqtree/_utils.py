@@ -71,6 +71,28 @@ def resolve_columns(columns: list[str], requested: Sequence[str | int] | None) -
     return resolved
 
 
+def resolve_column_subset(columns: list[str], requested: Sequence[str | int] | None, *, parameter: str) -> list[str]:
+    if requested is None:
+        return list(columns)
+
+    resolved = []
+    for item in requested:
+        if isinstance(item, int):
+            try:
+                resolved.append(columns[item])
+            except IndexError as exc:
+                raise ValueError(f"Column index out of range in {parameter}: {item}") from exc
+        else:
+            name = str(item)
+            if name not in columns:
+                raise ValueError(f"Unknown column in {parameter}: {name!r}")
+            resolved.append(name)
+
+    if len(set(resolved)) != len(resolved):
+        raise ValueError(f"{parameter} cannot contain duplicate columns.")
+    return resolved
+
+
 def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
