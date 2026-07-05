@@ -117,7 +117,12 @@ variables already selected.
 
 ## API
 
+For a fuller explanation of sequential factorization and variable ordering, see
+[theoretical_background.md](theoretical_background.md).
+
 See [api.md](api.md) for constructor parameters and learned attributes.
+
+For positioning relative to Synthpop, see [comparison.md](comparison.md).
 
 ## Diagrams
 

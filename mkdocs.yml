@@ -10,6 +10,8 @@ theme:
 
 nav:
   - Home: index.md
+  - Theoretical Background: theoretical_background.md
+  - Comparison: comparison.md
   - API Reference: api.md
   - Diagrams: diagrams.md
 
