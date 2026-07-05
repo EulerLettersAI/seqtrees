@@ -28,7 +28,8 @@ SequentialTreeSynthesizer(
 - `max_thresholds`: maximum candidate thresholds per numeric feature.
 - `tree_backend`: `"auto"`, `"native"`, `"sklearn"`, or `"lightgbm"`.
   `"auto"` uses LightGBM when installed, then scikit-learn, and otherwise
-  falls back to the pure-Python backend.
+  falls back to the pure-Python backend. SeqTree does not encode raw
+  categorical values; compiled backends require numeric preprocessed values.
 - `n_jobs`: parallel workers for fitting conditional trees and scoring greedy
   ordering candidates. Use `-1` for all available cores.
 - `random_state`: seed used for reproducible sampling.

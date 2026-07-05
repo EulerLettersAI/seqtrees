@@ -2,12 +2,12 @@ from seqtree import SequentialTreeSynthesizer
 
 
 data = [
-    {"age_band": "young", "sex": "F", "risk": "low"},
-    {"age_band": "young", "sex": "M", "risk": "low"},
-    {"age_band": "middle", "sex": "F", "risk": "medium"},
-    {"age_band": "middle", "sex": "M", "risk": "medium"},
-    {"age_band": "older", "sex": "F", "risk": "high"},
-    {"age_band": "older", "sex": "M", "risk": "high"},
+    {"age": 24, "sex_code": 0, "income_bin": 1, "risk_code": 0},
+    {"age": 31, "sex_code": 1, "income_bin": 1, "risk_code": 0},
+    {"age": 45, "sex_code": 0, "income_bin": 2, "risk_code": 1},
+    {"age": 52, "sex_code": 1, "income_bin": 2, "risk_code": 1},
+    {"age": 67, "sex_code": 0, "income_bin": 3, "risk_code": 2},
+    {"age": 73, "sex_code": 1, "income_bin": 3, "risk_code": 2},
 ]
 
 

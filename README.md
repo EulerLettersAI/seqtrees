@@ -10,14 +10,14 @@ conventions:
 from seqtree import SequentialTreeSynthesizer
 
 data = [
-    {"age_band": "young", "sex": "F", "risk": "low"},
-    {"age_band": "young", "sex": "M", "risk": "low"},
-    {"age_band": "older", "sex": "F", "risk": "high"},
-    {"age_band": "older", "sex": "M", "risk": "high"},
+    {"age": 24, "sex_code": 0, "income_bin": 1, "risk_code": 0},
+    {"age": 31, "sex_code": 1, "income_bin": 1, "risk_code": 0},
+    {"age": 67, "sex_code": 0, "income_bin": 3, "risk_code": 2},
+    {"age": 73, "sex_code": 1, "income_bin": 3, "risk_code": 2},
 ]
 
 model = SequentialTreeSynthesizer(
-    variable_order=["age_band", "sex", "risk"],
+    variable_order=["age", "sex_code", "income_bin", "risk_code"],
     tree_backend="auto",
     n_jobs=-1,
     random_state=7,
@@ -38,6 +38,11 @@ later variable is sampled from a conditional decision tree trained on the
 previous variables in the sequence. This mirrors the sequential data synthesis
 workflow shown in Figure 1 of the attached paper (`ocaa249.pdf`).
 
+SeqTree expects model-ready, preprocessed data. It does not encode raw
+categorical columns. Categorical variables should be converted before `fit`,
+for example by your preprocessing library, and passed as stable numeric codes
+or bins such as `sex_code`, `income_bin`, and `risk_code`.
+
 ## Features
 
 - `fit`, `sample`, and `fit_sample` methods.
@@ -50,6 +55,7 @@ workflow shown in Figure 1 of the attached paper (`ocaa249.pdf`).
 - Supports any number of preprocessed variables.
 - Accepts lists of dictionaries, lists of row sequences, and pandas DataFrames
   when pandas is installed.
+- Does not provide encoders, imputers, scalers, or category mapping utilities.
 - Pure-Python core with no mandatory runtime dependencies.
 - PlantUML diagrams in `docs/diagrams`.
 

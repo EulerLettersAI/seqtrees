@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from ._distributions import EmpiricalDistribution
-from ._utils import is_number
+from ._utils import require_numeric_values
 
 
 class LightGBMConditionalTree:
-    """Conditional sampler backed by LightGBM's histogram tree learner."""
+    """Conditional sampler backed by LightGBM's histogram regression trees."""
 
     def __init__(
         self,
@@ -28,7 +28,7 @@ class LightGBMConditionalTree:
 
     def fit(self, records: list[dict[str, Any]], features: list[str], target: str) -> "LightGBMConditionalTree":
         try:
-            from lightgbm import LGBMClassifier
+            from lightgbm import LGBMRegressor
         except ImportError as exc:
             raise ImportError("Install seqtree[lightgbm] to use tree_backend='lightgbm'.") from exc
 
@@ -36,34 +36,20 @@ class LightGBMConditionalTree:
         self.target_ = target
         target_values = [record[target] for record in records]
         self.marginal_ = EmpiricalDistribution(target_values)
+        require_numeric_values(records, self.features_ + [target], backend="lightgbm")
 
         if self.max_depth == 0 or not self.features_ or len(set(target_values)) <= 1:
             self.model_ = None
             self.leaf_distributions_ = {}
-            self.feature_maps_ = {}
-            self.categorical_indices_ = []
             return self
 
-        self.feature_maps_ = {}
-        self.categorical_indices_ = []
-        for index, feature in enumerate(self.features_):
-            values = [record.get(feature) for record in records if record.get(feature) is not None]
-            if not values or all(is_number(value) for value in values):
-                continue
-            self.feature_maps_[feature] = {
-                value: code for code, value in enumerate(dict.fromkeys(record.get(feature) for record in records))
-            }
-            self.categorical_indices_.append(index)
-
-        self.target_map_ = {value: index for index, value in enumerate(dict.fromkeys(target_values))}
         x_matrix = [self._encode_features(record) for record in records]
-        y_vector = [self.target_map_[value] for value in target_values]
 
         max_depth = -1 if self.max_depth is None else self.max_depth
         num_leaves = 31 if max_depth <= 0 else max(2, min(31, 2**max_depth))
-        self.model_ = LGBMClassifier(
+        self.model_ = LGBMRegressor(
             boosting_type="gbdt",
-            objective="multiclass" if len(self.target_map_) > 2 else "binary",
+            objective="regression",
             n_estimators=32,
             learning_rate=0.2,
             num_leaves=num_leaves,
@@ -74,7 +60,7 @@ class LightGBMConditionalTree:
             n_jobs=self.n_jobs,
             verbosity=-1,
         )
-        self.model_.fit(x_matrix, y_vector, categorical_feature=self.categorical_indices_)
+        self.model_.fit(x_matrix, target_values)
 
         grouped_values: dict[tuple[int, ...], list[Any]] = {}
         for leaf_id, value in zip(self._leaf_ids(x_matrix), target_values):
@@ -105,16 +91,7 @@ class LightGBMConditionalTree:
         return self.leaf_distributions_.get(leaf_id, self.marginal_)
 
     def _encode_features(self, record: dict[str, Any]) -> list[int | float]:
-        encoded = []
-        for feature in self.features_:
-            value = record.get(feature)
-            if feature in self.feature_maps_:
-                encoded.append(self.feature_maps_[feature].get(value, -1))
-            elif value is None:
-                encoded.append(float("nan"))
-            else:
-                encoded.append(value)
-        return encoded
+        return [float("nan") if record.get(feature) is None else record.get(feature) for feature in self.features_]
 
     def _leaf_ids(self, x_matrix: list[list[int | float]]) -> list[tuple[int, ...]]:
         leaves = self.model_.predict(x_matrix, pred_leaf=True)

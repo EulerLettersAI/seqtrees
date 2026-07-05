@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from ._distributions import EmpiricalDistribution
+from ._utils import require_numeric_values
 
 
 class SklearnConditionalTree:
-    """Conditional sampler backed by scikit-learn's compiled decision tree."""
+    """Conditional sampler backed by scikit-learn's compiled regression tree."""
 
     def __init__(
         self,
@@ -25,7 +26,7 @@ class SklearnConditionalTree:
 
     def fit(self, records: list[dict[str, Any]], features: list[str], target: str) -> "SklearnConditionalTree":
         try:
-            from sklearn.tree import DecisionTreeClassifier
+            from sklearn.tree import DecisionTreeRegressor
         except ImportError as exc:
             raise ImportError("Install seqtree[sklearn] to use tree_backend='sklearn'.") from exc
 
@@ -33,32 +34,24 @@ class SklearnConditionalTree:
         self.target_ = target
         target_values = [record[target] for record in records]
         self.marginal_ = EmpiricalDistribution(target_values)
+        require_numeric_values(records, self.features_ + [target], backend="sklearn")
 
         if self.max_depth == 0 or not self.features_ or len(set(target_values)) <= 1:
             self.model_ = None
             self.leaf_distributions_ = {}
-            self.feature_maps_ = {}
             return self
 
-        self.feature_maps_ = {
-            feature: {value: index for index, value in enumerate(dict.fromkeys(record.get(feature) for record in records))}
-            for feature in self.features_
-        }
-        self.target_map_ = {value: index for index, value in enumerate(dict.fromkeys(target_values))}
-        self.inverse_target_map_ = {index: value for value, index in self.target_map_.items()}
-
         x_matrix = [self._encode_features(record) for record in records]
-        y_vector = [self.target_map_[value] for value in target_values]
 
         max_depth = None if self.max_depth is None else self.max_depth
-        self.model_ = DecisionTreeClassifier(
-            criterion="entropy",
+        self.model_ = DecisionTreeRegressor(
+            criterion="squared_error",
             max_depth=max_depth,
             min_samples_leaf=self.min_samples_leaf,
             min_impurity_decrease=self.min_impurity_decrease,
             random_state=self.random_state,
         )
-        self.model_.fit(x_matrix, y_vector)
+        self.model_.fit(x_matrix, target_values)
 
         leaves = self.model_.apply(x_matrix)
         grouped_values: dict[int, list[Any]] = {}
@@ -90,7 +83,4 @@ class SklearnConditionalTree:
         return self.leaf_distributions_.get(leaf_id, self.marginal_)
 
     def _encode_features(self, record: dict[str, Any]) -> list[int]:
-        encoded = []
-        for feature in self.features_:
-            encoded.append(self.feature_maps_[feature].get(record.get(feature), -1))
-        return encoded
+        return [record.get(feature) for feature in self.features_]

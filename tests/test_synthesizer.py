@@ -9,19 +9,19 @@ from seqtree import SequentialTreeSynthesizer
 
 
 DATA = [
-    {"age": "young", "sex": "F", "risk": "low"},
-    {"age": "young", "sex": "M", "risk": "low"},
-    {"age": "middle", "sex": "F", "risk": "medium"},
-    {"age": "middle", "sex": "M", "risk": "medium"},
-    {"age": "older", "sex": "F", "risk": "high"},
-    {"age": "older", "sex": "M", "risk": "high"},
+    {"age": 24, "sex_code": 0, "risk_code": 0},
+    {"age": 31, "sex_code": 1, "risk_code": 0},
+    {"age": 45, "sex_code": 0, "risk_code": 1},
+    {"age": 52, "sex_code": 1, "risk_code": 1},
+    {"age": 67, "sex_code": 0, "risk_code": 2},
+    {"age": 73, "sex_code": 1, "risk_code": 2},
 ]
 
 
 class SequentialTreeSynthesizerTest(unittest.TestCase):
     def test_fit_sample_uses_requested_column_order(self):
         model = SequentialTreeSynthesizer(
-            variable_order=["age", "sex", "risk"],
+            variable_order=["age", "sex_code", "risk_code"],
             min_samples_leaf=1,
             random_state=1,
         )
@@ -29,17 +29,17 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         model.fit(DATA)
         rows = model.sample(20)
 
-        self.assertEqual(model.get_variable_order(), ["age", "sex", "risk"])
+        self.assertEqual(model.get_variable_order(), ["age", "sex_code", "risk_code"])
         self.assertEqual(len(rows), 20)
-        self.assertEqual(list(rows[0].keys()), ["age", "sex", "risk"])
-        self.assertTrue(all(row["risk"] in {"low", "medium", "high"} for row in rows))
+        self.assertEqual(list(rows[0].keys()), ["age", "sex_code", "risk_code"])
+        self.assertTrue(all(row["risk_code"] in {0, 1, 2} for row in rows))
 
     def test_optimize_order_includes_every_column(self):
         model = SequentialTreeSynthesizer(optimize_order=True, min_samples_leaf=1, n_jobs=2)
 
         model.fit(DATA)
 
-        self.assertEqual(set(model.get_variable_order()), {"age", "sex", "risk"})
+        self.assertEqual(set(model.get_variable_order()), {"age", "sex_code", "risk_code"})
         self.assertEqual(len(model.get_variable_order()), 3)
         self.assertEqual(model.n_jobs_, 2)
 
@@ -68,7 +68,7 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         self.assertEqual(list(synthetic[0].keys()), ["x0", "x1", "x2"])
 
     def test_invalid_variable_order_raises(self):
-        model = SequentialTreeSynthesizer(variable_order=["age", "risk"])
+        model = SequentialTreeSynthesizer(variable_order=["age", "risk_code"])
 
         with self.assertRaises(ValueError):
             model.fit(DATA)
@@ -97,13 +97,13 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
             self.assertEqual(len(model.sample(2)), 2)
 
     def test_to_puml_contains_learned_order(self):
-        model = SequentialTreeSynthesizer(variable_order=["age", "sex", "risk"], min_samples_leaf=1).fit(DATA)
+        model = SequentialTreeSynthesizer(variable_order=["age", "sex_code", "risk_code"], min_samples_leaf=1).fit(DATA)
 
         puml = model.to_puml()
 
         self.assertIn("@startuml", puml)
         self.assertIn('"age"', puml)
-        self.assertIn("v_age --> v_sex", puml)
+        self.assertIn("v_age --> v_sex_code", puml)
 
 
 if __name__ == "__main__":

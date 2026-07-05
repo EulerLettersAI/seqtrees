@@ -26,6 +26,14 @@ The current implementation assumes preprocessing has already happened. For
 example, raw categorical encoding, numeric binning, missing-value handling, and
 domain-specific cleaning can be handled before calling `fit`.
 
+SeqTree intentionally does not include encoders, imputers, scalers, or category
+mapping utilities. If the source data contains categories such as `"female"`,
+`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. The compiled
+backends (`"lightgbm"` and `"sklearn"`) require numeric preprocessed feature and
+target values. The native backend can operate on discrete Python values, but
+the recommended public workflow is still to preprocess categorical variables
+outside SeqTree so the generated output stays in the same encoded domain.
+
 ## Performance
 
 SeqTree can use either:
@@ -33,8 +41,8 @@ SeqTree can use either:
 - `tree_backend="native"`: the pure-Python fallback with no required
   dependencies;
 - `tree_backend="lightgbm"`: LightGBM's histogram-based gradient boosting
-  classifier, using leaf-index buckets for empirical sampling;
-- `tree_backend="sklearn"`: scikit-learn's compiled `DecisionTreeClassifier`
+  regressor, using leaf-index buckets for empirical sampling;
+- `tree_backend="sklearn"`: scikit-learn's compiled `DecisionTreeRegressor`
   with empirical leaf sampling;
 - `tree_backend="auto"`: use LightGBM when installed, then scikit-learn, and
   otherwise fall back to the native backend.
@@ -64,7 +72,7 @@ model one internal thread to avoid oversubscribing CPU cores.
 You can provide an exact order:
 
 ```python
-model = SequentialTreeSynthesizer(variable_order=["age_band", "sex", "risk"])
+model = SequentialTreeSynthesizer(variable_order=["age", "sex_code", "risk_code"])
 ```
 
 Or ask SeqTree to choose a greedy order:

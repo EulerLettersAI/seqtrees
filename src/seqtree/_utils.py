@@ -73,3 +73,16 @@ def resolve_columns(columns: list[str], requested: Sequence[str | int] | None) -
 
 def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def require_numeric_values(records: list[dict[str, Any]], columns: list[str], *, backend: str) -> None:
+    for column in columns:
+        for row_index, record in enumerate(records):
+            value = record.get(column)
+            if value is None:
+                continue
+            if not is_number(value):
+                raise TypeError(
+                    f"tree_backend={backend!r} requires preprocessed numeric data; "
+                    f"column {column!r} has non-numeric value {value!r} at row {row_index}."
+                )
