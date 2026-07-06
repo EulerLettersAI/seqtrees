@@ -12,7 +12,7 @@ nav:
   - Home: index.md
   - Theoretical Background: theoretical_background.md
   - Comparison: comparison.md
-  - References: references.md
+  - Examples: examples.md
   - API Reference: api.md
   - Diagrams: diagrams.md
 

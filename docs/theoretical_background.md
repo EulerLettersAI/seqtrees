@@ -1,5 +1,3 @@
-a
-
 # Theoretical Background
 
 SeqTree is based on sequential synthesis of tabular data. Instead of learning
