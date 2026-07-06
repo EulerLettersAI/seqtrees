@@ -2,30 +2,49 @@
 title SeqTree Sequential Data Synthesis
 
 start
+
 :Receive preprocessed tabular data;
+
 if (User provided variable_order?) then (yes)
   :Use supplied order;
 else (no)
   if (optimize_order=True?) then (yes)
-    :Choose greedy order by conditional entropy;
+    :Choose greedy variable order;\nFirst variable: lowest marginal entropy;\nLater variables: lowest conditional entropy;
   else (no)
     :Use input column order;
   endif
 endif
 
-:Fit empirical marginal for first variable;
+:Fit empirical marginal distribution\nfor first variable;
+
 while (More variables in order?) is (yes)
-  :Fit conditional tree for next variable;
-  :Use previous variables as predictors;
-  :Store empirical target distribution in each leaf;
+  :Select next variable as target;
+  :Use previous variables in order\nas predictors;
+  :Fit conditional decision tree\nfor target variable;
+  :Store empirical target distribution\ninside each leaf;
 endwhile (no)
 
-:Sample first variable from marginal;
-while (More variables to synthesize?) is (yes)
-  :Route partial row through next conditional tree;
-  :Sample next variable from reached leaf;
-  :Append generated value to row;
+:Initialize empty synthetic table;
+
+while (More synthetic rows needed?) is (yes)
+  :Start empty synthetic row;
+
+  :Sample first variable\nfrom empirical marginal distribution;
+  :Append sampled value to row;
+
+  while (More variables to synthesize\nin this row?) is (yes)
+    :Select next conditional tree;
+    :Route partial synthetic row\nthrough the tree;
+    :Reach a leaf;
+    :Sample next variable value\nfrom empirical distribution\nstored in reached leaf;
+    :Append generated value to row;
+  endwhile (no)
+
+  :Add completed synthetic row\nto synthetic table;
 endwhile (no)
+
 :Return synthetic table;
+
 stop
+
 @enduml

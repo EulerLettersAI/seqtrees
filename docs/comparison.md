@@ -5,7 +5,7 @@ Synthpop, but it makes a different design choice at the data boundary.
 
 ## Synthpop
 
-Synthpop is an R package for creating synthetic microdata. Its documentation
+Synthpop[@nowok2016synthpop] is an R package for creating synthetic microdata. Its documentation
 describes variables as categorical or continuous and states that variables are
 synthesised one by one using sequential modelling. Replacements are drawn from
 conditional distributions fitted to the original data using parametric models
@@ -44,22 +44,17 @@ production workflows.
 
 ## Practical Difference
 
-| Topic | Synthpop | SeqTree |
-| --- | --- | --- |
-| Language | R | Python |
-| Input data | R data frames with type-aware behavior | Preprocessed numeric tables |
-| Categorical handling | Can use factor/categorical-aware methods | External label encoding required |
-| Continuous handling | Parametric and tree-based numeric methods | Empirical or interpolated leaf sampling |
-| Variable roles | Largely driven by data type and method settings | Explicit `continuous_columns` and `discrete_columns` |
-| One-hot input | Not the core design point | Not intended; use one integer-coded categorical column |
-| API style | R functions such as `syn()` | Estimator-style `fit()` / `sample()` |
-| Backends | R modelling ecosystem | Native, scikit-learn, LightGBM |
+| Topic                | Synthpop                                        | SeqTree                                                 |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Language             | R                                               | Python                                                  |
+| Input data           | R data frames with type-aware behavior          | Preprocessed numeric tables                             |
+| Categorical handling | Can use factor/categorical-aware methods        | External label encoding required                        |
+| Continuous handling  | Parametric and tree-based numeric methods       | Empirical or interpolated leaf sampling                 |
+| Variable roles       | Largely driven by data type and method settings | Explicit`continuous_columns` and `discrete_columns` |
+| One-hot input        | Not the core design point                       | Not intended; use one integer-coded categorical column  |
+| API style            | R functions such as`syn()`                    | Estimator-style`fit()` / `sample()`                 |
+| Backends             | R modelling ecosystem                           | Native, scikit-learn, LightGBM                          |
 
 SeqTree is therefore closer to a Python estimator for already-prepared tabular
-data, while Synthpop is a broader R toolkit with more built-in data-type aware
+data, while Synthpop is a broader R toolkit with more built-in datua-type aware
 synthetic data machinery.
-
-## References
-
-- Synthpop CRAN manual: <https://cran.r-project.org/web/packages/synthpop/synthpop.pdf>
-- synthpop package paper [@nowok2016synthpop].

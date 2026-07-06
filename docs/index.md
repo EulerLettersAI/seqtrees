@@ -2,11 +2,11 @@
 
 SeqTree builds synthetic tabular rows by learning an ordered product of
 conditional distributions. Given preprocessed data with variables
-`X1, X2, ..., Xd`, it estimates:
+$X_1, X_2, ..., X_d$, it estimates:
 
-```text
-P(X1, X2, ..., Xd) = P(X1) P(X2 | X1) ... P(Xd | X1, ..., Xd-1)
-```
+$$
+P(X_1, X_2, ..., X_d) = P(X_1) P(X_2 | X_1) ... P(X_d | X_1, ..., X_{d-1})
+$$
 
 This implementation follows the sequential synthesis idea shown in [@khaled_el_mosquera_zheng_2020]: generate the first variable, append it to
 the synthetic row, then use the generated prefix to synthesize the next
@@ -29,9 +29,8 @@ category codes. Binary variables are ordinary discrete variables with codes
 
 SeqTree intentionally does not include encoders, imputers, scalers, or category
 mapping utilities. If the source data contains categories such as `"female"`,
-`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. For SeqTree,
-that usually means label encoding categorical variables to integer codes and
-passing naturally continuous variables as floats.
+`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. We recommed using [ifcfill](https://github.com/EulerLettersAI/ifcfill)
+for transforming your raw data into SeqTree-ready data.
 
 ## Continuous Variables
 
@@ -114,18 +113,17 @@ The optimizer starts with the lowest-entropy variable and repeatedly picks the
 remaining variable with the lowest tree-estimated conditional entropy given the
 variables already selected.
 
+For a full explanation of sequential factorization and variable ordering, see
+[Theoretical Background](theoretical_background.md).
+
 ## API
 
-For a fuller explanation of sequential factorization and variable ordering, see
-[theoretical_background.md](theoretical_background.md).
+See [API](api.md) for constructor parameters and learned attributes.
 
-See [api.md](api.md) for constructor parameters and learned attributes.
+## Comparison
 
-For positioning relative to Synthpop, see [comparison.md](comparison.md).
+For comparison with [Synthpop](https://cran.r-project.org/web/packages/synthpop/synthpop.pdf) ,  please check [Comparison](comparison.md).
 
 ## Diagrams
 
-PlantUML sources:
-
-- [diagrams/sequential_synthesis.puml](diagrams/sequential_synthesis.puml)
-- [diagrams/class_overview.puml](diagrams/class_overview.puml)
+Both activity and class diagrams are provided in [Diagrams](diagrams.md) 
