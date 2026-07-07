@@ -38,8 +38,8 @@ P(X1, X2, ..., Xd) = P(X1) P(X2 | X1) ... P(Xd | X1, ..., Xd-1)
 
 The first variable is sampled from its empirical marginal distribution. Each
 later variable is sampled from a conditional decision tree trained on the
-previous variables in the sequence. This mirrors the sequential data synthesis
-workflow shown in Figure 1 of the attached paper (`ocaa249.pdf`).
+previous variables in the sequence. This follows the sequential tree synthesis
+approach described by El Emam, Mosquera, and Zheng (2020).
 
 SeqTrees expects model-ready, preprocessed data with no null values. It accepts
 only:
@@ -81,9 +81,24 @@ classify every input column exactly once.
   when pandas is installed.
 - Does not provide encoders, imputers, scalers, or category mapping utilities.
 - Pure-Python core with no mandatory runtime dependencies.
-- PlantUML diagrams in `docs/diagrams`.
+
+## Installation
+
+```bash
+python -m pip install seqtrees
+```
+
+Install optional backends only when you need them:
+
+```bash
+python -m pip install "seqtrees[sklearn]"
+python -m pip install "seqtrees[lightgbm]"
+python -m pip install "seqtrees[fast]"
+```
 
 ## Install For Development
+
+Use an editable install when working on the source code locally:
 
 ```bash
 python -m venv .venv
@@ -91,13 +106,13 @@ source .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
 
-For faster compiled tree fitting:
+For faster compiled tree fitting from a local checkout:
 
 ```bash
 python -m pip install -e ".[fast]"
 ```
 
-For LightGBM only:
+For LightGBM only from a local checkout:
 
 ```bash
 python -m pip install -e ".[lightgbm]"
@@ -118,11 +133,8 @@ model = SequentialTreeSynthesizer(tree_backend="lightgbm", n_jobs=-1)
 
 ## Documentation
 
-Start with [docs/index.md](docs/index.md). The package includes PlantUML source
-files for the training and sampling flow:
-
-- [docs/diagrams/sequential_synthesis.puml](docs/diagrams/sequential_synthesis.puml)
-- [docs/diagrams/class_overview.puml](docs/diagrams/class_overview.puml)
+Read the documentation at https://eulerlettersai.github.io/seqtrees/ for
+examples, API details, diagrams, and theoretical background.
 
 Build the documentation locally with MkDocs:
 
@@ -133,24 +145,11 @@ python -m pip install -e ".[docs]"
 mkdocs serve
 ```
 
-GitHub Pages documentation is published by `.github/workflows/docs.yml` when
-changes land on `main`.
-
-## Release
-
-Releases are published to PyPI by `.github/workflows/publish.yml` when a GitHub
-Release is published. The workflow uses PyPI Trusted Publishing, so the PyPI
-project needs a trusted publisher configured for:
-
-- repository: `EulerLettersAI/seqtrees`
-- workflow: `.github/workflows/publish.yml`
-- environment: `pypi`
-
 ## References
 
-- The implementation is based on the sequential synthetic data workflow
-  described in the attached paper (`ocaa249.pdf`), especially the Figure 1
-  sequential data synthesis process.
+- El Emam, Mosquera, and Zheng. "Optimizing the synthesis of clinical trial data
+  using sequential trees." *Journal of the American Medical Informatics
+  Association*, 2020. https://academic.oup.com/jamia/article/28/1/3/5981525
 - Breiman, Friedman, Olshen, and Stone. *Classification and Regression Trees*.
   Wadsworth, 1984.
 - Quinlan. "Induction of Decision Trees." *Machine Learning*, 1986.
