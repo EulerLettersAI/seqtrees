@@ -103,6 +103,13 @@ For LightGBM only:
 python -m pip install -e ".[lightgbm]"
 ```
 
+To run the notebooks in `examples/`:
+
+```bash
+python -m pip install -e ".[examples]"
+jupyter lab examples
+```
+
 Use all available cores:
 
 ```python
