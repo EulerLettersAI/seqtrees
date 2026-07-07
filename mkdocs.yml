@@ -1,8 +1,8 @@
 site_name: SeqTree
 site_description: Sequential tree models for tabular synthetic data generation.
-site_url: https://seqtree.readthedocs.io/
-repo_url: https://github.com/seqtree/seqtree
-repo_name: seqtree/seqtree
+site_url: https://eulerlettersai.github.io/seqtree/
+repo_url: https://github.com/EulerLettersAI/seqtree
+repo_name: EulerLettersAI/seqtree
 
 theme:
   name: readthedocs

@@ -133,8 +133,18 @@ python -m pip install -e ".[docs]"
 mkdocs serve
 ```
 
-Read the Docs builds are configured by `.readthedocs.yaml` and install
-`docs/requirements.txt`.
+GitHub Pages documentation is published by `.github/workflows/docs.yml` when
+changes land on `main`.
+
+## Release
+
+Releases are published to PyPI by `.github/workflows/publish.yml` when a GitHub
+Release is published. The workflow uses PyPI Trusted Publishing, so the PyPI
+project needs a trusted publisher configured for:
+
+- repository: `EulerLettersAI/seqtree`
+- workflow: `.github/workflows/publish.yml`
+- environment: `pypi`
 
 ## References
 
