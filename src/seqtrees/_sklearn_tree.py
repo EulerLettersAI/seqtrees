@@ -28,7 +28,7 @@ class SklearnConditionalTree:
         try:
             from sklearn.tree import DecisionTreeRegressor
         except ImportError as exc:
-            raise ImportError("Install seqtree[sklearn] to use tree_backend='sklearn'.") from exc
+            raise ImportError("Install seqtrees[sklearn] to use tree_backend='sklearn'.") from exc
 
         self.features_ = list(features)
         self.target_ = target

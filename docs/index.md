@@ -1,6 +1,6 @@
-# SeqTree Documentation
+# SeqTrees Documentation
 
-SeqTree builds synthetic tabular rows by learning an ordered product of
+SeqTrees builds synthetic tabular rows by learning an ordered product of
 conditional distributions. Given preprocessed data with variables
 $X_1, X_2, ..., X_d$, it estimates:
 
@@ -21,20 +21,20 @@ variable until the row is complete.
 - empirical leaf distributions, so sampling preserves values seen in the
   preprocessed training data.
 
-The current implementation assumes preprocessing has already happened. SeqTree
+The current implementation assumes preprocessing has already happened. SeqTrees
 expects model-ready data with no null values. It accepts only continuous
 variables represented as floats and discrete variables represented as integer
 category codes. Binary variables are ordinary discrete variables with codes
 `0` and `1`.
 
-SeqTree intentionally does not include encoders, imputers, scalers, or category
+SeqTrees intentionally does not include encoders, imputers, scalers, or category
 mapping utilities. If the source data contains categories such as `"female"`,
 `"male"`, `"low"`, or `"high"`, convert them before calling `fit`. We recommed using [ifcfill](https://github.com/EulerLettersAI/ifcfill)
-for transforming your raw data into SeqTree-ready data.
+for transforming your raw data into SeqTrees-ready data.
 
 ## Continuous Variables
 
-SeqTree's default sampling strategy is empirical: every generated value is one
+SeqTrees' default sampling strategy is empirical: every generated value is one
 of the values observed in the training data. For continuous float variables,
 you can opt into interpolation inside the reached leaf distribution:
 
@@ -46,7 +46,7 @@ model = SequentialTreeSynthesizer(
 )
 ```
 
-SeqTree can infer variable types when both `continuous_columns` and
+SeqTrees can infer variable types when both `continuous_columns` and
 `discrete_columns` are omitted: all-float columns become continuous and all-int
 columns become discrete. For production use, prefer declaring both lists:
 
@@ -60,11 +60,11 @@ model = SequentialTreeSynthesizer(
 When either type list is supplied, the two lists must classify every input
 column exactly once. One-hot encoded inputs are intentionally out of scope; keep
 each categorical field as a single integer-coded variable before fitting
-SeqTree.
+SeqTrees.
 
 ## Performance
 
-SeqTree can use either:
+SeqTrees can use either:
 
 - `tree_backend="native"`: the pure-Python fallback with no required
   dependencies;
@@ -78,7 +78,7 @@ SeqTree can use either:
 Install the faster optional dependencies with:
 
 ```bash
-python -m pip install "seqtree[fast]"
+python -m pip install "seqtrees[fast]"
 ```
 
 Use LightGBM explicitly with:
@@ -89,10 +89,10 @@ model = SequentialTreeSynthesizer(tree_backend="lightgbm", n_jobs=-1)
 
 Set `n_jobs` to control parallelism. `n_jobs=1` runs serially, a positive
 integer sets the worker count, and `n_jobs=-1` uses all detected CPU cores.
-SeqTree parallelizes conditional tree fitting across variables once the order is
+SeqTrees parallelizes conditional tree fitting across variables once the order is
 known, parallelizes candidate scoring inside greedy order optimization, and can
 parallelize synthetic row generation through `sample(..., n_jobs=...)`.
-When fitting many conditional models in parallel, SeqTree gives each LightGBM
+When fitting many conditional models in parallel, SeqTrees gives each LightGBM
 model one internal thread to avoid oversubscribing CPU cores.
 
 ## Variable Ordering
@@ -103,7 +103,7 @@ You can provide an exact order:
 model = SequentialTreeSynthesizer(variable_order=["age", "sex_code", "risk_code"])
 ```
 
-Or ask SeqTree to choose a greedy order:
+Or ask SeqTrees to choose a greedy order:
 
 ```python
 model = SequentialTreeSynthesizer(optimize_order=True)

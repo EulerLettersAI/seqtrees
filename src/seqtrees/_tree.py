@@ -39,7 +39,7 @@ class TreeNode:
 
 
 class ConditionalTree:
-    """Small CART-style conditional sampler used internally by SeqTree."""
+    """Small CART-style conditional sampler used internally by SeqTrees."""
 
     def __init__(
         self,

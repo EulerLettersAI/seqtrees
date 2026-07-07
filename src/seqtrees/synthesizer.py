@@ -195,7 +195,7 @@ class SequentialTreeSynthesizer:
             ``random_state`` is used.
         as_dataframe:
             If ``True``, return a pandas DataFrame. If ``False``, return a list
-            of dictionaries. If omitted, SeqTree returns a DataFrame when the
+            of dictionaries. If omitted, SeqTrees returns a DataFrame when the
             model was fitted with DataFrame-like input.
         n_jobs:
             Optional worker count for row generation. If omitted, the fitted
@@ -221,7 +221,7 @@ class SequentialTreeSynthesizer:
             try:
                 import pandas as pd
             except ImportError as exc:
-                raise ImportError("Install seqtree[pandas] to return pandas DataFrames.") from exc
+                raise ImportError("Install seqtrees[pandas] to return pandas DataFrames.") from exc
             return pd.DataFrame(rows, columns=self.feature_names_in_)
         return rows
 
@@ -264,7 +264,7 @@ class SequentialTreeSynthesizer:
             PlantUML source for the fitted variable-order dependency chain.
         """
         self._check_is_fitted()
-        lines = ["@startuml", "title SeqTree learned sequential model", "left to right direction"]
+        lines = ["@startuml", "title SeqTrees learned sequential model", "left to right direction"]
         for column in self.variable_order_:
             lines.append(f'node "{column}" as {self._puml_id(column)}')
         for left, right in zip(self.variable_order_, self.variable_order_[1:]):
@@ -380,7 +380,7 @@ class SequentialTreeSynthesizer:
             else:
                 raise TypeError(
                     f"Could not infer variable type for column {column!r}. "
-                    "SeqTree accepts only float continuous variables and integer-coded discrete variables; "
+                    "SeqTrees accepts only float continuous variables and integer-coded discrete variables; "
                     "pass continuous_columns and discrete_columns explicitly if needed."
                 )
         return continuous_columns, discrete_columns

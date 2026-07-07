@@ -30,7 +30,7 @@ class LightGBMConditionalTree:
         try:
             from lightgbm import LGBMRegressor
         except ImportError as exc:
-            raise ImportError("Install seqtree[lightgbm] to use tree_backend='lightgbm'.") from exc
+            raise ImportError("Install seqtrees[lightgbm] to use tree_backend='lightgbm'.") from exc
 
         self.features_ = list(features)
         self.target_ = target

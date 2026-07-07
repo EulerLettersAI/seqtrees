@@ -1,5 +1,5 @@
 @startuml
-title SeqTree Class Overview
+title SeqTrees Class Overview
 
 class SequentialTreeSynthesizer {
   +fit(X, y=None)

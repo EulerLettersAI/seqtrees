@@ -1,13 +1,13 @@
-# seqtree
+# seqtrees
 
 Sequential tree models for tabular synthetic data generation.
 
-`seqtree` is a small open source Python library for generating synthetic tabular
+`seqtrees` is a small open source Python library for generating synthetic tabular
 data with a sequential tree model. Its API follows familiar estimator naming
 conventions:
 
 ```python
-from seqtree import SequentialTreeSynthesizer
+from seqtrees import SequentialTreeSynthesizer
 
 data = [
     {"age": 24.5, "sex_code": 0, "income_bin": 1, "risk_code": 0},
@@ -41,7 +41,7 @@ later variable is sampled from a conditional decision tree trained on the
 previous variables in the sequence. This mirrors the sequential data synthesis
 workflow shown in Figure 1 of the attached paper (`ocaa249.pdf`).
 
-SeqTree expects model-ready, preprocessed data with no null values. It accepts
+SeqTrees expects model-ready, preprocessed data with no null values. It accepts
 only:
 
 - continuous variables as floats;
@@ -142,7 +142,7 @@ Releases are published to PyPI by `.github/workflows/publish.yml` when a GitHub
 Release is published. The workflow uses PyPI Trusted Publishing, so the PyPI
 project needs a trusted publisher configured for:
 
-- repository: `EulerLettersAI/seqtree`
+- repository: `EulerLettersAI/seqtrees`
 - workflow: `.github/workflows/publish.yml`
 - environment: `pypi`
 

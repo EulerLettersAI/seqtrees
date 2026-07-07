@@ -3,14 +3,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seqtree"
+name = "seqtrees"
 version = "0.1.0"
 description = "Sequential tree models for tabular synthetic data generation"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [
-  { name = "SeqTree contributors" }
+  { name = "SeqTrees contributors" }
 ]
 keywords = ["synthetic-data", "tabular-data", "decision-tree", "privacy", "sequential-model"]
 classifiers = [
@@ -39,9 +39,9 @@ lightgbm = ["lightgbm>=4.0"]
 fast = ["pandas>=2", "scikit-learn>=1.3", "lightgbm>=4.0"]
 
 [project.urls]
-Homepage = "https://github.com/EulerLettersAI/seqtree"
-Documentation = "https://eulerlettersai.github.io/seqtree/"
-Issues = "https://github.com/EulerLettersAI/seqtree/issues"
+Homepage = "https://github.com/EulerLettersAI/seqtrees"
+Documentation = "https://eulerlettersai.github.io/seqtrees/"
+Issues = "https://github.com/EulerLettersAI/seqtrees/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

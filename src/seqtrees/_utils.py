@@ -122,7 +122,7 @@ def validate_no_nulls(records: list[dict[str, Any]], columns: list[str]) -> None
     for row_index, record in enumerate(records):
         for column in columns:
             if record.get(column) is None:
-                raise ValueError(f"SeqTree does not accept null values; found null in column {column!r} at row {row_index}.")
+                raise ValueError(f"SeqTrees does not accept null values; found null in column {column!r} at row {row_index}.")
 
 
 def validate_variable_types(
