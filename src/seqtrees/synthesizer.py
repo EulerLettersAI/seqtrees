@@ -25,9 +25,10 @@ class SequentialTreeSynthesizer:
     ``P(X_1, ..., X_d) = P(X_1) * P(X_2 | X_1) * ... * P(X_d | X_1, ..., X_{d-1})``.
 
     Each conditional distribution is represented by an empirical tree whose
-    leaves store observed target values. Input data must be preprocessed into a
-    model-ready numeric representation with no null values: continuous
-    variables as floats and discrete variables as integer category codes.
+    leaves store observed target values. Pandas DataFrame input is transformed
+    with ifcfill using label encoding for categorical variables. List-based
+    input must already be numeric: continuous variables as floats and discrete
+    variables as integer category codes.
 
     Parameters
     ----------
@@ -79,8 +80,15 @@ class SequentialTreeSynthesizer:
         Learned or user-supplied variable order.
     continuous_columns_:
         Set of columns treated as continuous for interpolation.
+    integer_columns_:
+        Set of original DataFrame columns identified by ifcfill as integer
+        variables. These columns are numeric, not categorical labels.
+    categorical_columns_:
+        Set of original DataFrame columns identified by ifcfill as categorical
+        variables and label-encoded for modelling.
     discrete_columns_:
         Set of columns treated as discrete integer category codes.
+        For raw DataFrame input, this is the set of categorical source columns.
     marginal_:
         Empirical distribution for the first variable in ``variable_order_``.
     trees_:
@@ -125,8 +133,9 @@ class SequentialTreeSynthesizer:
         ----------
         X:
             A pandas DataFrame, list of dictionaries, or list of row sequences.
-            Values must be floats for continuous variables and integers for
-            discrete variables. Null values are not accepted.
+            DataFrames are transformed with ifcfill. List-based input must
+            contain floats for continuous variables and integers for discrete
+            variables. Null values are not accepted for list-based input.
         y:
             Ignored. Present for compatibility with estimator conventions.
 
@@ -136,17 +145,19 @@ class SequentialTreeSynthesizer:
             The fitted estimator.
         """
         del y
-        records, columns, dataframe_input = normalize_table(X)
         self._validate_params()
+        prepared_X, dataframe_input = self._prepare_input(X)
+        records, columns, _ = normalize_table(prepared_X)
         if not columns:
             raise ValueError("X must contain at least one column.")
         self.n_jobs_ = resolve_n_jobs(self.n_jobs)
         validate_no_nulls(records, columns)
-        continuous_columns, discrete_columns = self._resolve_variable_types(records, columns)
+        continuous_columns, discrete_columns, integer_columns = self._resolve_variable_types(records, columns)
         validate_variable_types(
             records,
             continuous_columns=continuous_columns,
             discrete_columns=discrete_columns,
+            integer_columns=integer_columns,
         )
 
         if self.variable_order is not None:
@@ -161,6 +172,7 @@ class SequentialTreeSynthesizer:
         self.variable_order_ = order
         self.continuous_columns_ = continuous_columns
         self.discrete_columns_ = discrete_columns
+        self.integer_columns_ = integer_columns
         self.dataframe_input_ = dataframe_input
         self.marginal_ = EmpiricalDistribution([record[order[0]] for record in records])
         self.trees_: dict[str, Any] = {}
@@ -214,6 +226,7 @@ class SequentialTreeSynthesizer:
         seeds = [rng.randrange(0, 2**63) for _ in range(n_samples)]
         sample_jobs = self.n_jobs_ if n_jobs is None else resolve_n_jobs(n_jobs)
         rows = parallel_map(self._sample_one, seeds, sample_jobs)
+        rows = self._restore_rows(rows, random_state=random_state)
 
         if as_dataframe is None:
             as_dataframe = self.dataframe_input_
@@ -336,11 +349,94 @@ class SequentialTreeSynthesizer:
         return getattr(self, "_backend_n_jobs_", getattr(self, "n_jobs_", 1))
 
     def _should_interpolate(self, column: str) -> bool:
-        return self.continuous_strategy == "interpolate" and column in self.continuous_columns_
+        numeric_columns = self.continuous_columns_ | self.integer_columns_
+        return self.continuous_strategy == "interpolate" and column in numeric_columns
 
-    def _resolve_variable_types(self, records: list[dict[str, Any]], columns: list[str]) -> tuple[set[str], set[str]]:
+    def _prepare_input(self, X: Any) -> tuple[Any, bool]:
+        if not self._should_use_ifcfill(X):
+            self.ifc_transformer_ = None
+            self.ifc_column_types_ = {}
+            self.categorical_columns_ = set()
+            return X, False
+
+        try:
+            from ifcfill import IFCTransformer
+        except ImportError as exc:
+            raise ImportError("Install ifcfill>=0.3.4 to fit raw pandas DataFrames.") from exc
+
+        dataframe = X.copy()
+        dataframe.columns = [str(column) for column in dataframe.columns]
+        transformer = IFCTransformer(cat_encoding="label", n_jobs=self.n_jobs)
+        transformed = transformer.fit_transform(dataframe)
+        transformed.columns = [str(column) for column in transformed.columns]
+
+        self.ifc_transformer_ = transformer
+        self.ifc_column_types_ = {
+            str(column): str(column_type)
+            for column, column_type in transformer.column_types_.items()
+        }
+        self.categorical_columns_ = {
+            column for column, column_type in self.ifc_column_types_.items() if column_type == "categorical"
+        }
+        return transformed, True
+
+    @staticmethod
+    def _should_use_ifcfill(X: Any) -> bool:
+        return hasattr(X, "columns") and hasattr(X, "to_dict") and hasattr(X, "__len__")
+
+    def _restore_rows(self, rows: list[dict[str, Any]], *, random_state: int | None) -> list[dict[str, Any]]:
+        if self.ifc_transformer_ is None:
+            return rows
+
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError("Install pandas to restore ifcfill-transformed samples.") from exc
+
+        frame = pd.DataFrame(rows, columns=self.feature_names_in_)
+        for column in self.integer_columns_ | self.discrete_columns_:
+            if column in frame:
+                frame[column] = frame[column].round().astype("int64")
+
+        restored = self.ifc_transformer_.inverse_transform(
+            frame,
+            random_state=self.random_state if random_state is None else random_state,
+        )
+        restored.columns = [str(column) for column in restored.columns]
+        return restored.to_dict("records")
+
+    def _resolve_variable_types(
+        self,
+        records: list[dict[str, Any]],
+        columns: list[str],
+    ) -> tuple[set[str], set[str], set[str]]:
+        if self.ifc_transformer_ is not None:
+            if self.continuous_columns is not None or self.discrete_columns is not None:
+                return (*self._resolve_declared_variable_types(columns), set())
+            continuous_columns = {
+                column for column in columns if self.ifc_column_types_.get(column) == "float"
+            }
+            integer_columns = {
+                column for column in columns if self.ifc_column_types_.get(column) in {"integer", "datetime"}
+            }
+            discrete_columns = {
+                column for column in columns if self.ifc_column_types_.get(column) == "categorical"
+            }
+            unknown = set(columns) - continuous_columns - integer_columns - discrete_columns
+            if unknown:
+                continuous_columns.update(unknown)
+            return continuous_columns, discrete_columns, integer_columns
+
         if self.continuous_columns is None and self.discrete_columns is None:
-            return self._infer_variable_types(records, columns)
+            continuous_columns, discrete_columns = self._infer_variable_types(records, columns)
+            return continuous_columns, discrete_columns, set()
+
+        continuous_columns, discrete_columns = self._resolve_declared_variable_types(columns)
+        return continuous_columns, discrete_columns, set()
+
+    def _resolve_declared_variable_types(self, columns: list[str]) -> tuple[set[str], set[str]]:
+        if self.continuous_columns is None and self.discrete_columns is None:
+            return set(), set()
 
         continuous_columns = (
             set(resolve_column_subset(columns, self.continuous_columns, parameter="continuous_columns"))

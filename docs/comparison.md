@@ -18,16 +18,17 @@ to factors depending on settings such as `minnumlevels`.
 
 ## SeqTrees
 
-SeqTrees is deliberately narrower. It expects preprocessing to happen before
-`fit`. The input table must contain no null values and every variable must be
+SeqTrees is deliberately narrower. For pandas DataFrame input, it uses ifcfill
+to impute and label-encode values before fitting. List-based input must be
+preprocessed before `fit`, contain no null values, and every variable must be
 one of:
 
 - continuous: represented as `float`;
 - discrete: represented as `int` category codes.
 
-SeqTrees does not encode raw categorical values, does not impute, does not scale,
-and does not accept one-hot encoding as the intended workflow. Binary variables
-are simply discrete integer-coded variables with values such as `0` and `1`.
+SeqTrees does not accept one-hot encoding as the intended workflow. Binary
+variables are simply discrete integer-coded variables with values such as `0`
+and `1`.
 
 Users should declare the modelling role of every variable:
 
@@ -38,23 +39,24 @@ model = SequentialTreeSynthesizer(
 )
 ```
 
-If both lists are omitted, SeqTrees can infer all-float columns as continuous and
-all-integer columns as discrete, but explicit declaration is recommended for
-production workflows.
+If both lists are omitted for list-based input, SeqTrees can infer all-float
+columns as continuous and all-integer columns as discrete. For DataFrames,
+SeqTrees uses `IFCTransformer.column_types_` so original categorical columns do
+not generate unseen labels while original integer columns remain numeric.
 
 ## Practical Difference
 
 | Topic                | Synthpop                                        | SeqTrees                                                 |
 | -------------------- | ----------------------------------------------- | ------------------------------------------------------- |
 | Language             | R                                               | Python                                                  |
-| Input data           | R data frames with type-aware behavior          | Preprocessed numeric tables                             |
-| Categorical handling | Can use factor/categorical-aware methods        | External label encoding required                        |
+| Input data           | R data frames with type-aware behavior          | DataFrames via ifcfill or preprocessed numeric tables   |
+| Categorical handling | Can use factor/categorical-aware methods        | ifcfill label encoding for DataFrame input              |
 | Continuous handling  | Parametric and tree-based numeric methods       | Empirical or interpolated leaf sampling                 |
 | Variable roles       | Largely driven by data type and method settings | Explicit`continuous_columns` and `discrete_columns` |
 | One-hot input        | Not the core design point                       | Not intended; use one integer-coded categorical column  |
 | API style            | R functions such as`syn()`                    | Estimator-style`fit()` / `sample()`                 |
 | Backends             | R modelling ecosystem                           | Native, scikit-learn, LightGBM                          |
 
-SeqTrees is therefore closer to a Python estimator for already-prepared tabular
-data, while Synthpop is a broader R toolkit with more built-in datua-type aware
-synthetic data machinery.
+SeqTrees is therefore closer to a Python estimator with a focused DataFrame
+preparation layer, while Synthpop is a broader R toolkit with more built-in
+data-type aware synthetic data machinery.

@@ -130,13 +130,24 @@ def validate_variable_types(
     *,
     continuous_columns: set[str],
     discrete_columns: set[str],
+    integer_columns: set[str] | None = None,
 ) -> None:
+    integer_columns = integer_columns or set()
     for column in continuous_columns:
         for row_index, record in enumerate(records):
             value = record[column]
             if not is_float_value(value):
                 raise TypeError(
                     f"continuous column {column!r} must contain float values; "
+                    f"found {value!r} at row {row_index}."
+                )
+
+    for column in integer_columns:
+        for row_index, record in enumerate(records):
+            value = record[column]
+            if not is_integer_code(value):
+                raise TypeError(
+                    f"integer column {column!r} must contain integer values; "
                     f"found {value!r} at row {row_index}."
                 )
 

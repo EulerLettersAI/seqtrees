@@ -240,14 +240,16 @@ print(model.get_variable_order())
 
 ## Continuous And Discrete Variables
 
-SeqTrees expects the preprocessing layer to define variable meaning before data
-reaches the synthesizer:
+For pandas DataFrame input, SeqTrees uses ifcfill to define variable meaning
+before the tree model is fitted. Original categorical columns are label-encoded
+and restored after sampling; original integer columns are treated as numeric
+integer variables. List-based input must already follow these conventions:
 
 - continuous variables must be floats;
 - discrete variables must be integer category codes;
 - binary variables are discrete integer category codes;
 - null values are not accepted;
-- raw categorical strings are not accepted;
+- raw categorical strings are accepted only through pandas DataFrame input;
 - one-hot encoded inputs are not the intended workflow.
 
 For example:
@@ -260,7 +262,8 @@ model = SequentialTreeSynthesizer(
 )
 ```
 
-With `continuous_strategy="empirical"`, continuous variables are sampled from
+With `continuous_strategy="empirical"`, numeric variables are sampled from
 observed training values in the reached leaf. With
 `continuous_strategy="interpolate"`, SeqTrees may generate interpolated values
-inside the reached leaf for columns declared continuous.
+inside the reached leaf for columns declared continuous and for integer columns
+detected from DataFrame input.

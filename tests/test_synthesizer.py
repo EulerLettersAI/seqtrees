@@ -179,6 +179,46 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             model.fit(data)
 
+    def test_dataframe_input_is_transformed_and_restored_with_ifcfill(self):
+        import pandas as pd
+
+        data = pd.DataFrame(
+            {
+                "group": ["A", "B", "A", "C"],
+                "count": [1, 10, 20, 30],
+                "score": [0.5, 1.5, 2.5, 3.5],
+            }
+        )
+        model = SequentialTreeSynthesizer(
+            variable_order=["count", "group", "score"],
+            continuous_strategy="interpolate",
+            min_samples_leaf=1,
+            random_state=2,
+        ).fit(data)
+
+        rows = model.sample(100, random_state=3, as_dataframe=False)
+        counts = [row["count"] for row in rows]
+
+        self.assertEqual(model.categorical_columns_, {"group"})
+        self.assertEqual(model.discrete_columns_, {"group"})
+        self.assertEqual(model.integer_columns_, {"count"})
+        self.assertEqual(model.continuous_columns_, {"score"})
+        self.assertTrue(all(row["group"] in {"A", "B", "C"} for row in rows))
+        self.assertTrue(any(count not in {1, 10, 20, 30} for count in counts))
+        self.assertTrue(all(isinstance(count, int) for count in counts))
+
+    def test_dataframe_sample_defaults_to_restored_dataframe(self):
+        import pandas as pd
+
+        data = pd.DataFrame({"group": ["A", "B"], "count": [1, 3]})
+        model = SequentialTreeSynthesizer(min_samples_leaf=1).fit(data)
+
+        synthetic = model.sample(4, random_state=4)
+
+        self.assertIsInstance(synthetic, pd.DataFrame)
+        self.assertEqual(list(synthetic.columns), ["group", "count"])
+        self.assertTrue(set(synthetic["group"]).issubset({"A", "B"}))
+
     def test_null_values_are_rejected(self):
         data = [
             {"group_code": 0, "score": 1.0},

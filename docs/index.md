@@ -1,7 +1,7 @@
 # SeqTrees Documentation
 
 SeqTrees builds synthetic tabular rows by learning an ordered product of
-conditional distributions. Given preprocessed data with variables
+conditional distributions. Given tabular data with variables
 $X_1, X_2, ..., X_d$, it estimates:
 
 $$
@@ -21,22 +21,22 @@ variable until the row is complete.
 - empirical leaf distributions, so sampling preserves values seen in the
   preprocessed training data.
 
-The current implementation assumes preprocessing has already happened. SeqTrees
-expects model-ready data with no null values. It accepts only continuous
-variables represented as floats and discrete variables represented as integer
-category codes. Binary variables are ordinary discrete variables with codes
-`0` and `1`.
+SeqTrees accepts raw pandas DataFrames and uses
+[ifcfill](https://github.com/EulerLettersAI/ifcfill) with label encoding to
+prepare them for the tree model. The fitted transformer is retained so sampled
+DataFrame output is restored to the original labels and column types.
 
-SeqTrees intentionally does not include encoders, imputers, scalers, or category
-mapping utilities. If the source data contains categories such as `"female"`,
-`"male"`, `"low"`, or `"high"`, convert them before calling `fit`. We recommed using [ifcfill](https://github.com/EulerLettersAI/ifcfill)
-for transforming your raw data into SeqTrees-ready data.
+List-based inputs still need to be model-ready data with no null values:
+continuous variables represented as floats and discrete variables represented
+as integer category codes. Binary variables are ordinary discrete variables with
+codes `0` and `1`.
 
 ## Continuous Variables
 
 SeqTrees' default sampling strategy is empirical: every generated value is one
-of the values observed in the training data. For continuous float variables,
-you can opt into interpolation inside the reached leaf distribution:
+of the values observed in the transformed training data. For continuous float
+variables, and for integer variables detected from DataFrame input, you can opt
+into interpolation inside the reached leaf distribution:
 
 ```python
 model = SequentialTreeSynthesizer(
@@ -48,7 +48,11 @@ model = SequentialTreeSynthesizer(
 
 SeqTrees can infer variable types when both `continuous_columns` and
 `discrete_columns` are omitted: all-float columns become continuous and all-int
-columns become discrete. For production use, prefer declaring both lists:
+list-based columns become discrete. For DataFrame input, SeqTrees uses
+`IFCTransformer.column_types_`: original categorical columns stay discrete and
+never generate unseen labels, while original integer columns are treated as
+numeric integer variables. For production use with preprocessed list data,
+prefer declaring both lists:
 
 ```python
 model = SequentialTreeSynthesizer(
