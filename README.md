@@ -46,6 +46,10 @@ prepare them for the tree model. The fitted transformer is used again when
 sampling, so generated DataFrame output is restored to the original labels and
 column types.
 
+After fitting, inspect the exact model-ready table with
+`model.get_preprocessed_data()` or the fitted `model.preprocessed_data_`
+attribute.
+
 List-based inputs still need to be model-ready, preprocessed data with no null
 values. They accept only:
 
@@ -74,6 +78,7 @@ classify every input column exactly once.
 ## Features
 
 - `fit`, `sample`, and `fit_sample` methods.
+- Access to the model-ready fitted table with `get_preprocessed_data()`.
 - User-specified variable ordering with `variable_order`.
 - Greedy learned ordering with `optimize_order=True`.
 - Parallel fitting and order-search candidates with `n_jobs`.

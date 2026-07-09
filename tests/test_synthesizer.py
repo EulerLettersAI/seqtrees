@@ -207,6 +207,23 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         self.assertTrue(any(count not in {1, 10, 20, 30} for count in counts))
         self.assertTrue(all(isinstance(count, int) for count in counts))
 
+        preprocessed = model.get_preprocessed_data()
+        self.assertEqual(list(preprocessed.columns), ["group", "count", "score"])
+        self.assertEqual(preprocessed["group"].dtype.kind, "i")
+        self.assertEqual(preprocessed["count"].dtype.kind, "i")
+        self.assertEqual(preprocessed["score"].dtype.kind, "f")
+
+    def test_get_preprocessed_data_returns_copy_by_default(self):
+        import pandas as pd
+
+        data = pd.DataFrame({"group": ["A", "B"], "count": [1, 3]})
+        model = SequentialTreeSynthesizer(min_samples_leaf=1).fit(data)
+
+        preprocessed = model.get_preprocessed_data()
+        preprocessed.loc[0, "count"] = 999
+
+        self.assertNotEqual(model.preprocessed_data_.loc[0, "count"], 999)
+
     def test_dataframe_sample_defaults_to_restored_dataframe(self):
         import pandas as pd
 

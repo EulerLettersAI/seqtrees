@@ -25,6 +25,8 @@ SeqTrees accepts raw pandas DataFrames and uses
 [ifcfill](https://github.com/EulerLettersAI/ifcfill) with label encoding to
 prepare them for the tree model. The fitted transformer is retained so sampled
 DataFrame output is restored to the original labels and column types.
+Use `model.get_preprocessed_data()` after fitting to inspect the exact
+model-ready DataFrame used by the sequential trees.
 
 List-based inputs still need to be model-ready data with no null values:
 continuous variables represented as floats and discrete variables represented

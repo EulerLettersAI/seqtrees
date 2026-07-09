@@ -89,6 +89,9 @@ class SequentialTreeSynthesizer:
     discrete_columns_:
         Set of columns treated as discrete integer category codes.
         For raw DataFrame input, this is the set of categorical source columns.
+    preprocessed_data_:
+        DataFrame used internally to fit the sequential tree model after any
+        ifcfill transformation.
     marginal_:
         Empirical distribution for the first variable in ``variable_order_``.
     trees_:
@@ -150,6 +153,7 @@ class SequentialTreeSynthesizer:
         records, columns, _ = normalize_table(prepared_X)
         if not columns:
             raise ValueError("X must contain at least one column.")
+        self.preprocessed_data_ = self._preprocessed_dataframe(prepared_X, records, columns)
         self.n_jobs_ = resolve_n_jobs(self.n_jobs)
         validate_no_nulls(records, columns)
         continuous_columns, discrete_columns, integer_columns = self._resolve_variable_types(records, columns)
@@ -268,6 +272,30 @@ class SequentialTreeSynthesizer:
         self._check_is_fitted()
         return list(self.variable_order_)
 
+    def get_preprocessed_data(self, *, copy: bool = True) -> Any:
+        """Return the model-ready DataFrame used during fitting.
+
+        For pandas DataFrame input, this is the output of SeqTrees' internal
+        ifcfill transformation. For list-based input, this is the normalized
+        numeric table used by the tree model.
+
+        Parameters
+        ----------
+        copy:
+            If ``True``, return a defensive copy. If ``False``, return the
+            stored fitted DataFrame directly.
+
+        Returns
+        -------
+        Any
+            The preprocessed pandas DataFrame used to fit the sequential tree
+            model.
+        """
+        self._check_is_fitted()
+        if copy:
+            return self.preprocessed_data_.copy()
+        return self.preprocessed_data_
+
     def to_puml(self) -> str:
         """Render the fitted sequential dependency chain as PlantUML.
 
@@ -351,6 +379,19 @@ class SequentialTreeSynthesizer:
     def _should_interpolate(self, column: str) -> bool:
         numeric_columns = self.continuous_columns_ | self.integer_columns_
         return self.continuous_strategy == "interpolate" and column in numeric_columns
+
+    @staticmethod
+    def _preprocessed_dataframe(prepared_X: Any, records: list[dict[str, Any]], columns: list[str]) -> Any:
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError("Install pandas to inspect preprocessed SeqTrees data.") from exc
+
+        if hasattr(prepared_X, "columns") and hasattr(prepared_X, "copy"):
+            frame = prepared_X.copy()
+            frame.columns = [str(column) for column in frame.columns]
+            return frame
+        return pd.DataFrame(records, columns=columns)
 
     def _prepare_input(self, X: Any) -> tuple[Any, bool]:
         if not self._should_use_ifcfill(X):
