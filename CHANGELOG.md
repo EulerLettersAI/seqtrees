@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Updated the runtime dependency to `ifcfill==0.3.6` after `0.3.5` was yanked.
+
 ## 0.2.0 - 2026-07-09
 
 - Added Python 3.11 support metadata alongside Python 3.9 and 3.10.
