@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 - 2026-07-20
 
 - Updated the runtime dependency to `ifcfill==0.3.6` after `0.3.5` was yanked.
 
