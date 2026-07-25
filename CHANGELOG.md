@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 - 2026-07-25
 
 - Restricted fitting input to pandas DataFrames.
 - Disabled internal preprocessing by default and added the explicit
