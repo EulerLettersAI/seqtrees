@@ -14,5 +14,6 @@ python -m pip install "seqtrees[examples]"
   `risk_code`.
 - [Medical DataFrame synthesis](https://github.com/EulerLettersAI/seqtrees/blob/main/examples/medical_dataframe_seqtrees.ipynb): loads a
   public Synthea healthcare CSV zip from a URL, fits SeqTrees directly on a
-  mixed patient DataFrame, samples the same number of rows, and restores
-  patient-like values through SeqTrees' internal `ifcfill` transformer.
+  mixed patient DataFrame using `preprocessor="ifcfill"`, samples the same
+  number of rows, and restores patient-like values through the fitted
+  transformer.

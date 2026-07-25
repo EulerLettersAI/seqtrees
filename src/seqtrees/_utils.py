@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 
@@ -9,40 +9,13 @@ def is_pandas_dataframe(value: Any) -> bool:
 
 
 def normalize_table(data: Any) -> tuple[list[dict[str, Any]], list[str], bool]:
-    """Return records, column names, and whether the input looked DataFrame-like."""
+    """Return records, column names, and whether the input is a DataFrame."""
     if is_pandas_dataframe(data):
         columns = [str(column) for column in data.columns]
         records = [{str(key): val for key, val in row.items()} for row in data.to_dict("records")]
         return records, columns, True
 
-    if not isinstance(data, Sequence) or isinstance(data, (str, bytes)):
-        raise TypeError("X must be a pandas DataFrame, a list of dictionaries, or a list of rows.")
-
-    rows = list(data)
-    if not rows:
-        raise ValueError("X must contain at least one row.")
-
-    first = rows[0]
-    if isinstance(first, Mapping):
-        columns = [str(column) for column in first.keys()]
-        records = []
-        for row in rows:
-            if not isinstance(row, Mapping):
-                raise TypeError("All rows must use the same representation.")
-            records.append({str(key): value for key, value in row.items()})
-        return records, columns, False
-
-    if isinstance(first, Sequence) and not isinstance(first, (str, bytes)):
-        width = len(first)
-        columns = [f"x{i}" for i in range(width)]
-        records = []
-        for row in rows:
-            if not isinstance(row, Sequence) or isinstance(row, (str, bytes)) or len(row) != width:
-                raise TypeError("All rows must be sequences with the same length.")
-            records.append({columns[i]: value for i, value in enumerate(row)})
-        return records, columns, False
-
-    raise TypeError("Rows must be dictionaries or sequences.")
+    raise TypeError("X must be a pandas DataFrame.")
 
 
 def resolve_columns(columns: list[str], requested: Sequence[str | int] | None) -> list[str]:
@@ -119,10 +92,20 @@ def require_numeric_values(records: list[dict[str, Any]], columns: list[str], *,
 
 
 def validate_no_nulls(records: list[dict[str, Any]], columns: list[str]) -> None:
+    try:
+        import pandas as pd
+    except ImportError as exc:
+        raise ImportError("SeqTrees requires pandas.") from exc
+
     for row_index, record in enumerate(records):
         for column in columns:
-            if record.get(column) is None:
-                raise ValueError(f"SeqTrees does not accept null values; found null in column {column!r} at row {row_index}.")
+            if bool(pd.isna(record.get(column))):
+                raise ValueError(
+                    f"SeqTrees does not accept missing values when preprocessor=None; "
+                    f"found one in column {column!r} at row {row_index}. "
+                    "Clean the DataFrame first or use preprocessor='ifcfill' for internal imputation "
+                    "and categorical label encoding."
+                )
 
 
 def validate_variable_types(

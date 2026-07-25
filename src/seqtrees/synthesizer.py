@@ -25,10 +25,9 @@ class SequentialTreeSynthesizer:
     ``P(X_1, ..., X_d) = P(X_1) * P(X_2 | X_1) * ... * P(X_d | X_1, ..., X_{d-1})``.
 
     Each conditional distribution is represented by an empirical tree whose
-    leaves store observed target values. Pandas DataFrame input is transformed
-    with ifcfill using label encoding for categorical variables. List-based
-    input must already be numeric: continuous variables as floats and discrete
-    variables as integer category codes.
+    leaves store observed target values. Input must be a pandas DataFrame.
+    SeqTrees does no internal preprocessing by default; optionally,
+    ``preprocessor="ifcfill"`` enables imputation and label encoding.
 
     Parameters
     ----------
@@ -69,6 +68,11 @@ class SequentialTreeSynthesizer:
         Number of parallel workers. Use ``-1`` to use all available cores.
     random_state:
         Optional seed for reproducible sampling.
+    preprocessor:
+        Optional internal preprocessor. The default, ``None``, uses the
+        DataFrame as supplied and rejects missing or non-model-ready values.
+        Set to ``"ifcfill"`` to enable IFCFill imputation and categorical label
+        encoding. No other preprocessors are supported.
 
     Attributes
     ----------
@@ -115,6 +119,7 @@ class SequentialTreeSynthesizer:
         discrete_columns: Sequence[str | int] | None = None,
         n_jobs: int | None = 1,
         random_state: int | None = None,
+        preprocessor: str | None = None,
     ) -> None:
         self.variable_order = variable_order
         self.optimize_order = optimize_order
@@ -128,6 +133,7 @@ class SequentialTreeSynthesizer:
         self.discrete_columns = discrete_columns
         self.n_jobs = n_jobs
         self.random_state = random_state
+        self.preprocessor = preprocessor
 
     def fit(self, X: Any, y: Any = None) -> "SequentialTreeSynthesizer":
         """Fit the sequential tree model.
@@ -135,10 +141,9 @@ class SequentialTreeSynthesizer:
         Parameters
         ----------
         X:
-            A pandas DataFrame, list of dictionaries, or list of row sequences.
-            DataFrames are transformed with ifcfill. List-based input must
-            contain floats for continuous variables and integers for discrete
-            variables. Null values are not accepted for list-based input.
+            A pandas DataFrame. It must contain no missing values when
+            ``preprocessor=None``. In that mode, continuous variables must be
+            floats and discrete variables integer category codes.
         y:
             Ignored. Present for compatibility with estimator conventions.
 
@@ -149,7 +154,7 @@ class SequentialTreeSynthesizer:
         """
         del y
         self._validate_params()
-        prepared_X, dataframe_input = self._prepare_input(X)
+        prepared_X = self._prepare_input(X)
         records, columns, _ = normalize_table(prepared_X)
         if not columns:
             raise ValueError("X must contain at least one column.")
@@ -177,7 +182,7 @@ class SequentialTreeSynthesizer:
         self.continuous_columns_ = continuous_columns
         self.discrete_columns_ = discrete_columns
         self.integer_columns_ = integer_columns
-        self.dataframe_input_ = dataframe_input
+        self.dataframe_input_ = True
         self.marginal_ = EmpiricalDistribution([record[order[0]] for record in records])
         self.trees_: dict[str, Any] = {}
         self._backend_n_jobs_ = 1 if self.n_jobs_ > 1 and len(order[1:]) > 1 else self.n_jobs_
@@ -275,9 +280,8 @@ class SequentialTreeSynthesizer:
     def get_preprocessed_data(self, *, copy: bool = True) -> Any:
         """Return the model-ready DataFrame used during fitting.
 
-        For pandas DataFrame input, this is the output of SeqTrees' internal
-        ifcfill transformation. For list-based input, this is the normalized
-        numeric table used by the tree model.
+        This is the supplied DataFrame when ``preprocessor=None``, or IFCFill's
+        transformed DataFrame when ``preprocessor="ifcfill"``.
 
         Parameters
         ----------
@@ -393,20 +397,31 @@ class SequentialTreeSynthesizer:
             return frame
         return pd.DataFrame(records, columns=columns)
 
-    def _prepare_input(self, X: Any) -> tuple[Any, bool]:
-        if not self._should_use_ifcfill(X):
+    def _prepare_input(self, X: Any) -> Any:
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError("SeqTrees requires pandas.") from exc
+
+        if not isinstance(X, pd.DataFrame):
+            raise TypeError("X must be a pandas DataFrame.")
+
+        dataframe = X.copy()
+        dataframe.columns = [str(column) for column in dataframe.columns]
+
+        if self.preprocessor is None:
             self.ifc_transformer_ = None
             self.ifc_column_types_ = {}
             self.categorical_columns_ = set()
-            return X, False
+            records, columns, _ = normalize_table(dataframe)
+            validate_no_nulls(records, columns)
+            return dataframe
 
         try:
             from ifcfill import IFCTransformer
         except ImportError as exc:
             raise ImportError("Install ifcfill>=0.3.6 to fit raw pandas DataFrames.") from exc
 
-        dataframe = X.copy()
-        dataframe.columns = [str(column) for column in dataframe.columns]
         transformer = IFCTransformer(cat_encoding="label", n_jobs=self.n_jobs)
         transformed = transformer.fit_transform(dataframe)
         transformed.columns = [str(column) for column in transformed.columns]
@@ -419,11 +434,7 @@ class SequentialTreeSynthesizer:
         self.categorical_columns_ = {
             column for column, column_type in self.ifc_column_types_.items() if column_type == "categorical"
         }
-        return transformed, True
-
-    @staticmethod
-    def _should_use_ifcfill(X: Any) -> bool:
-        return hasattr(X, "columns") and hasattr(X, "to_dict") and hasattr(X, "__len__")
+        return transformed
 
     def _restore_rows(self, rows: list[dict[str, Any]], *, random_state: int | None) -> list[dict[str, Any]]:
         if self.ifc_transformer_ is None:
@@ -533,6 +544,8 @@ class SequentialTreeSynthesizer:
             raise ValueError(f"tree_backend must be one of {sorted(SUPPORTED_TREE_BACKENDS)}.")
         if self.continuous_strategy not in {"empirical", "interpolate"}:
             raise ValueError("continuous_strategy must be 'empirical' or 'interpolate'.")
+        if self.preprocessor not in {None, "ifcfill"}:
+            raise ValueError("preprocessor must be None or 'ifcfill'.")
         resolve_n_jobs(self.n_jobs)
 
     def _check_is_fitted(self) -> None:

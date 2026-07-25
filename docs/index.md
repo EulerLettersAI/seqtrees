@@ -21,17 +21,17 @@ variable until the row is complete.
 - empirical leaf distributions, so sampling preserves values seen in the
   preprocessed training data.
 
-SeqTrees accepts raw pandas DataFrames and uses
-[ifcfill](https://github.com/EulerLettersAI/ifcfill) with label encoding to
-prepare them for the tree model. The fitted transformer is retained so sampled
-DataFrame output is restored to the original labels and column types.
+SeqTrees accepts pandas DataFrames and performs no internal preprocessing by
+default. Missing values are rejected and categorical columns must already be
+integer encoded. Set `preprocessor="ifcfill"` to opt into
+[ifcfill](https://github.com/EulerLettersAI/ifcfill) imputation and categorical
+label encoding. IFCFill is the only supported internal preprocessor.
 Use `model.get_preprocessed_data()` after fitting to inspect the exact
 model-ready DataFrame used by the sequential trees.
 
-List-based inputs still need to be model-ready data with no null values:
-continuous variables represented as floats and discrete variables represented
-as integer category codes. Binary variables are ordinary discrete variables with
-codes `0` and `1`.
+Without IFCFill, inputs must be model-ready DataFrames with no missing values:
+continuous variables are floats and discrete variables are integer category
+codes. Binary variables are ordinary discrete variables with codes `0` and `1`.
 
 ## Continuous Variables
 
@@ -50,11 +50,11 @@ model = SequentialTreeSynthesizer(
 
 SeqTrees can infer variable types when both `continuous_columns` and
 `discrete_columns` are omitted: all-float columns become continuous and all-int
-list-based columns become discrete. For DataFrame input, SeqTrees uses
+integer-valued columns become discrete. With IFCFill enabled, SeqTrees uses
 `IFCTransformer.column_types_`: original categorical columns stay discrete and
 never generate unseen labels, while original integer columns are treated as
-numeric integer variables. For production use with preprocessed list data,
-prefer declaring both lists:
+numeric integer variables. Prefer declaring both lists when inference is not
+appropriate:
 
 ```python
 model = SequentialTreeSynthesizer(

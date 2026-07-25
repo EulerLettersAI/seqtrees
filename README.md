@@ -8,13 +8,14 @@ conventions:
 
 ```python
 from seqtrees import SequentialTreeSynthesizer
+import pandas as pd
 
-data = [
+data = pd.DataFrame([
     {"age": 24.5, "sex_code": 0, "income_bin": 1, "risk_code": 0},
     {"age": 31.2, "sex_code": 1, "income_bin": 1, "risk_code": 0},
     {"age": 67.4, "sex_code": 0, "income_bin": 3, "risk_code": 2},
     {"age": 73.0, "sex_code": 1, "income_bin": 3, "risk_code": 2},
-]
+])
 
 model = SequentialTreeSynthesizer(
     variable_order=["age", "sex_code", "income_bin", "risk_code"],
@@ -41,22 +42,24 @@ later variable is sampled from a conditional decision tree trained on the
 previous variables in the sequence. This follows the sequential tree synthesis
 approach described by El Emam, Mosquera, and Zheng (2020).
 
-SeqTrees accepts raw pandas DataFrames and uses `ifcfill` with label encoding to
-prepare them for the tree model. The fitted transformer is used again when
-sampling, so generated DataFrame output is restored to the original labels and
-column types.
+SeqTrees accepts pandas DataFrames and performs no internal preprocessing by
+default. The DataFrame must have no missing values, with continuous variables
+stored as floats and discrete variables stored as integer category codes.
+
+Set `preprocessor="ifcfill"` to opt into internal imputation and categorical
+label encoding. IFCFill is the only supported internal preprocessor. Its fitted
+transformer restores sampled output to the original labels and column types.
 
 After fitting, inspect the exact model-ready table with
 `model.get_preprocessed_data()` or the fitted `model.preprocessed_data_`
 attribute.
 
-List-based inputs still need to be model-ready, preprocessed data with no null
-values. They accept only:
+Without IFCFill, DataFrames must be model-ready and accept only:
 
 - continuous variables as floats;
 - discrete variables as integer category codes, including binary 0/1 variables.
 
-For DataFrame input, original categorical columns are label-encoded and sampled
+With `preprocessor="ifcfill"`, original categorical columns are label-encoded and sampled
 only from labels observed during fitting. Original integer columns are treated
 as numeric integer variables, not category labels; with interpolation enabled,
 they may generate integer values that were not present in the input.
@@ -88,9 +91,9 @@ classify every input column exactly once.
 - Optional within-leaf interpolation for continuous float and DataFrame integer
   variables.
 - Supports any number of variables.
-- Accepts lists of dictionaries, lists of row sequences, and pandas DataFrames
-  when pandas is installed.
-- Uses ifcfill for DataFrame encoding, imputation, and restoration.
+- Accepts pandas DataFrames.
+- Does no preprocessing by default; optionally uses IFCFill for encoding,
+  imputation, and restoration.
 
 ## Installation
 

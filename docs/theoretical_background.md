@@ -240,16 +240,16 @@ print(model.get_variable_order())
 
 ## Continuous And Discrete Variables
 
-For pandas DataFrame input, SeqTrees uses ifcfill to define variable meaning
-before the tree model is fitted. Original categorical columns are label-encoded
-and restored after sampling; original integer columns are treated as numeric
-integer variables. List-based input must already follow these conventions:
+With `preprocessor="ifcfill"`, SeqTrees uses IFCFill to define variable meaning
+before fitting. Original categorical columns are label-encoded and restored
+after sampling; original integer columns are treated as numeric integer
+variables. Without it, the DataFrame must already follow these conventions:
 
 - continuous variables must be floats;
 - discrete variables must be integer category codes;
 - binary variables are discrete integer category codes;
 - null values are not accepted;
-- raw categorical strings are accepted only through pandas DataFrame input;
+- raw categorical strings are accepted only when IFCFill is enabled;
 - one-hot encoded inputs are not the intended workflow.
 
 For example:

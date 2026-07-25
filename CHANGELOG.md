@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Restricted fitting input to pandas DataFrames.
+- Disabled internal preprocessing by default and added the explicit
+  `preprocessor="ifcfill"` option.
+- Added missing-value validation with guidance for opting into IFCFill.
+
 ## 0.2.1 - 2026-07-20
 
 - Updated the runtime dependency to `ifcfill==0.3.6` after `0.3.5` was yanked.
