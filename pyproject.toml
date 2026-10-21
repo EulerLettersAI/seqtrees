@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seqtrees"
-version = "0.2.2"
+version = "0.3.0"
 description = "Sequential tree models for tabular synthetic data generation"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.13"
 license = { text = "Apache-2.0" }
 authors = [
   { name = "SeqTrees contributors" }
@@ -22,10 +22,11 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["pandas>=2", "ifcfill==0.3.6"]
+dependencies = ["pandas>=2", "ifcfill==0.4.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

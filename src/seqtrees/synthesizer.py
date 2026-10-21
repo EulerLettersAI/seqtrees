@@ -420,7 +420,7 @@ class SequentialTreeSynthesizer:
         try:
             from ifcfill import IFCTransformer
         except ImportError as exc:
-            raise ImportError("Install ifcfill>=0.3.6 to fit raw pandas DataFrames.") from exc
+            raise ImportError("Install ifcfill>=0.4.0 to fit raw pandas DataFrames.") from exc
 
         transformer = IFCTransformer(cat_encoding="label", n_jobs=self.n_jobs)
         transformed = transformer.fit_transform(dataframe)

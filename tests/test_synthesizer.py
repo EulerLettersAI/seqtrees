@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -209,6 +210,31 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         self.assertEqual(preprocessed["group"].dtype.kind, "i")
         self.assertEqual(preprocessed["count"].dtype.kind, "i")
         self.assertEqual(preprocessed["score"].dtype.kind, "f")
+
+    def test_ifcfill_sampling_reproduces_training_missingness(self):
+        rng = np.random.default_rng(0)
+        n = 300
+        data = pd.DataFrame(
+            {
+                "value": rng.integers(0, 5, n).astype(float),
+                "score": rng.normal(size=n),
+                "group": rng.choice(["x", "y", "z"], n),
+            }
+        )
+        data.loc[rng.choice(n, 60, replace=False), "value"] = np.nan
+        data.loc[rng.choice(n, 40, replace=False), "group"] = None
+
+        model = SequentialTreeSynthesizer(
+            min_samples_leaf=1, random_state=1, preprocessor="ifcfill"
+        ).fit(data)
+        sample = model.sample(n, random_state=2)
+
+        for column in ("value", "group"):
+            train_rate = data[column].isna().mean()
+            sample_rate = sample[column].isna().mean()
+            self.assertGreater(sample_rate, 0)
+            self.assertLess(abs(sample_rate - train_rate), 0.1)
+        self.assertFalse(sample["score"].isna().any())
 
     def test_get_preprocessed_data_returns_copy_by_default(self):
         data = pd.DataFrame({"group": ["A", "B"], "count": [1, 3]})

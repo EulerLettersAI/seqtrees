@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-10-21
+
+- Updated the runtime dependency to `ifcfill==0.4.0`.
+- Limited supported Python versions to `>=3.9,<3.13` to match `ifcfill==0.4.0`, and added Python 3.12 metadata.
+- Sampled output from `preprocessor="ifcfill"` now reproduces missing values at the training rates instead of imputing them. This follows the `ifcfill` 0.4.0 inverse transform, which always rebuilds missingness.
+
 ## 0.2.2 - 2026-07-25
 
 - Restricted fitting input to pandas DataFrames.
