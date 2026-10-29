@@ -7,7 +7,13 @@ from ._utils import require_numeric_values
 
 
 class LightGBMConditionalTree:
-    """Conditional sampler backed by LightGBM's histogram regression trees."""
+    """Conditional sampler backed by one LightGBM histogram regression tree.
+
+    A single tree is grown so that every leaf holds at least
+    ``min_samples_leaf`` training records. Grouping records by their leaves
+    across several boosted trees would intersect the partitions into groups
+    of single records, and sampling would then reproduce training records.
+    """
 
     def __init__(
         self,
@@ -50,8 +56,8 @@ class LightGBMConditionalTree:
         self.model_ = LGBMRegressor(
             boosting_type="gbdt",
             objective="regression",
-            n_estimators=32,
-            learning_rate=0.2,
+            n_estimators=1,
+            learning_rate=1.0,
             num_leaves=num_leaves,
             max_depth=max_depth,
             min_child_samples=self.min_samples_leaf,

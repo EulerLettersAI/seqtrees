@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 - 2026-10-29
+
+- Fixed the LightGBM backend, the default when LightGBM is installed,
+  reproducing complete training records. It grouped records by their leaves
+  across 32 boosted trees, which left most groups with a single record, so
+  sampling replayed that record. The backend now grows one tree, so every leaf
+  holds at least `min_samples_leaf` records.
+
 ## 0.4.1 - 2026-10-29
 
 - Fixed `seqtrees.__version__` to read the installed package metadata instead

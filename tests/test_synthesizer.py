@@ -308,6 +308,28 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
             model.fit(DATA)
             self.assertEqual(len(model.sample(2)), 2)
 
+    @unittest.skipIf(importlib.util.find_spec("lightgbm") is None, "lightgbm is not installed")
+    def test_lightgbm_leaves_hold_at_least_min_samples_leaf_records(self):
+        rng = np.random.default_rng(0)
+        data = pd.DataFrame(
+            {
+                "x": rng.normal(size=400),
+                "y": rng.normal(size=400),
+                "code": rng.integers(0, 3, size=400),
+            }
+        )
+        model = SequentialTreeSynthesizer(
+            tree_backend="lightgbm",
+            min_samples_leaf=10,
+            continuous_columns=["x", "y"],
+            discrete_columns=["code"],
+            random_state=0,
+        ).fit(data)
+
+        for tree in model.trees_.values():
+            sizes = [distribution.n_samples_ for distribution in tree.leaf_distributions_.values()]
+            self.assertGreaterEqual(min(sizes), 10)
+
     def test_to_puml_contains_learned_order(self):
         model = SequentialTreeSynthesizer(variable_order=["age", "sex_code", "risk_code"], min_samples_leaf=1).fit(DATA)
 

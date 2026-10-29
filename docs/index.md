@@ -81,8 +81,8 @@ SeqTrees can use either:
 
 - `tree_backend="native"`: the pure-Python fallback with no required
   dependencies;
-- `tree_backend="lightgbm"`: LightGBM's histogram-based gradient boosting
-  regressor, using leaf-index buckets for empirical or interpolated sampling;
+- `tree_backend="lightgbm"`: a single LightGBM histogram-based regression
+  tree, using its leaves for empirical or interpolated sampling;
 - `tree_backend="sklearn"`: scikit-learn's compiled `DecisionTreeRegressor`
   with empirical or interpolated leaf sampling;
 - `tree_backend="auto"`: use LightGBM when installed, then scikit-learn, and
