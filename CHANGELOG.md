@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 - 2026-10-29
+
+- Relaxed the runtime dependency from `ifcfill==0.5.1` to
+  `ifcfill>=0.5.2,<0.6`, so IFCFill patch releases install without a new
+  SeqTrees release. IFCFill 0.5.2 rounds reconstructed dates to whole units.
+
 ## 0.4.2 - 2026-10-29
 
 - Fixed the LightGBM backend, the default when LightGBM is installed,

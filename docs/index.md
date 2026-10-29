@@ -26,7 +26,7 @@ default. Missing values are rejected and categorical columns must already be
 integer encoded. Set `preprocessor="ifcfill"` to opt into
 [ifcfill](https://github.com/EulerLettersAI/ifcfill) imputation and categorical
 label encoding. IFCFill is the only supported internal preprocessor.
-With IFCFill 0.5.1, generated missingness flags are modelled as discrete
+With IFCFill 0.5, generated missingness flags are modelled as discrete
 variables so missingness can be learned jointly with the data.
 Use `model.get_preprocessed_data()` after fitting to inspect the exact
 model-ready DataFrame used by the sequential trees.

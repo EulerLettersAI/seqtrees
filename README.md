@@ -50,7 +50,7 @@ stored as floats and discrete variables stored as integer category codes.
 Set `preprocessor="ifcfill"` to opt into internal imputation and categorical
 label encoding. IFCFill is the only supported internal preprocessor. Its fitted
 transformer restores sampled output to the original labels and column types.
-With IFCFill 0.5.1, generated missingness flags are retained in the model-ready
+With IFCFill 0.5, generated missingness flags are retained in the model-ready
 table so SeqTrees can learn missingness jointly with the data.
 
 After fitting, inspect the exact model-ready table with
