@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-10-29
+
+- Fixed `seqtrees.__version__` to read the installed package metadata instead
+  of reporting the stale hard-coded version `0.2.0`.
+
 ## 0.4.0 - 2026-10-29
 
 - Changed the default `continuous_strategy` from `"empirical"` to

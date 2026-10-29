@@ -1,4 +1,5 @@
 import importlib.util
+from importlib.metadata import version
 import unittest
 from pathlib import Path
 import sys
@@ -8,6 +9,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+import seqtrees
 from seqtrees import SequentialTreeSynthesizer
 
 
@@ -22,6 +24,9 @@ DATA = pd.DataFrame([
 
 
 class SequentialTreeSynthesizerTest(unittest.TestCase):
+    def test_module_version_matches_installed_package_metadata(self):
+        self.assertEqual(seqtrees.__version__, version("seqtrees"))
+
     def test_fit_sample_uses_requested_column_order(self):
         model = SequentialTreeSynthesizer(
             variable_order=["age", "sex_code", "risk_code"],
