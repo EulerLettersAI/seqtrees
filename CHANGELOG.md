@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-10-29
 
 - Changed the default `continuous_strategy` from `"empirical"` to
   `"interpolate"`.
