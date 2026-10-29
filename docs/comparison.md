@@ -50,7 +50,7 @@ not generate unseen labels while original integer columns remain numeric.
 | Language             | R                                               | Python                                                  |
 | Input data           | R data frames with type-aware behavior          | pandas DataFrames                                       |
 | Categorical handling | Can use factor/categorical-aware methods        | Integer codes, or opt-in IFCFill label encoding         |
-| Continuous handling  | Parametric and tree-based numeric methods       | Empirical or interpolated leaf sampling                 |
+| Continuous handling  | Parametric and tree-based numeric methods       | Interpolated by default; empirical sampling is opt-in   |
 | Variable roles       | Largely driven by data type and method settings | Explicit`continuous_columns` and `discrete_columns` |
 | One-hot input        | Not the core design point                       | Not intended; use one integer-coded categorical column  |
 | API style            | R functions such as`syn()`                    | Estimator-style`fit()` / `sample()`                 |

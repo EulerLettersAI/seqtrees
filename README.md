@@ -20,7 +20,6 @@ data = pd.DataFrame([
 model = SequentialTreeSynthesizer(
     variable_order=["age", "sex_code", "income_bin", "risk_code"],
     tree_backend="auto",
-    continuous_strategy="empirical",
     continuous_columns=["age"],
     discrete_columns=["sex_code", "income_bin", "risk_code"],
     n_jobs=-1,
@@ -37,10 +36,12 @@ The model factorizes a table into a sequence of conditional distributions:
 P(X1, X2, ..., Xd) = P(X1) P(X2 | X1) ... P(Xd | X1, ..., Xd-1)
 ```
 
-The first variable is sampled from its empirical marginal distribution. Each
-later variable is sampled from a conditional decision tree trained on the
-previous variables in the sequence. This follows the sequential tree synthesis
-approach described by El Emam, Mosquera, and Zheng (2020).
+The first variable is sampled from its marginal distribution. Each later
+variable is sampled from a conditional decision tree trained on the previous
+variables in the sequence. By default, continuous numeric variables are
+interpolated within these distributions, while discrete variables use observed
+codes. This follows the sequential tree synthesis approach described by El
+Emam, Mosquera, and Zheng (2020).
 
 SeqTrees accepts pandas DataFrames and performs no internal preprocessing by
 default. The DataFrame must have no missing values, with continuous variables
@@ -49,6 +50,8 @@ stored as floats and discrete variables stored as integer category codes.
 Set `preprocessor="ifcfill"` to opt into internal imputation and categorical
 label encoding. IFCFill is the only supported internal preprocessor. Its fitted
 transformer restores sampled output to the original labels and column types.
+With IFCFill 0.5.1, generated missingness flags are retained in the model-ready
+table so SeqTrees can learn missingness jointly with the data.
 
 After fitting, inspect the exact model-ready table with
 `model.get_preprocessed_data()` or the fitted `model.preprocessed_data_`
@@ -61,19 +64,26 @@ Without IFCFill, DataFrames must be model-ready and accept only:
 
 With `preprocessor="ifcfill"`, original categorical columns are label-encoded and sampled
 only from labels observed during fitting. Original integer columns are treated
-as numeric integer variables, not category labels; with interpolation enabled,
-they may generate integer values that were not present in the input.
+as numeric integer variables, not category labels; with the default
+interpolation strategy, they may generate integer values that were not present
+in the input.
 
-By default, all generated values are sampled from observed training values.
-For continuous float columns, you can opt into within-leaf interpolation:
+By default, continuous float columns—and numeric integer columns detected by
+IFCFill—use within-distribution interpolation. They can therefore generate
+values not present in the input. Discrete columns continue to sample observed
+category codes:
 
 ```python
 model = SequentialTreeSynthesizer(
-    continuous_strategy="interpolate",
     continuous_columns=["age", "bmi"],
     discrete_columns=["sex_code", "income_bin", "risk_code"],
 )
 ```
+
+> **Warning:** Setting `continuous_strategy="empirical"` samples exact observed
+> values and can reproduce complete training records. This exposes training
+> data; do not use the empirical strategy when exact-record disclosure is
+> unacceptable.
 
 When type lists are supplied, `continuous_columns` and `discrete_columns` must
 classify every input column exactly once.
@@ -88,8 +98,8 @@ classify every input column exactly once.
 - Parallel row synthesis with `sample(..., n_jobs=...)`.
 - Optional LightGBM and scikit-learn backends with `tree_backend="lightgbm"`,
   `tree_backend="sklearn"`, or `tree_backend="auto"`.
-- Optional within-leaf interpolation for continuous float and DataFrame integer
-  variables.
+- Default within-distribution interpolation for continuous float and IFCFill
+  numeric integer variables.
 - Supports any number of variables.
 - Accepts pandas DataFrames.
 - Does no preprocessing by default; optionally uses IFCFill for encoding,

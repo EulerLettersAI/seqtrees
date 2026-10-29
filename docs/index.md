@@ -18,14 +18,16 @@ variable until the row is complete.
 
 - an empirical marginal distribution for the first variable;
 - one conditional decision tree for each later variable;
-- empirical leaf distributions, so sampling preserves values seen in the
-  preprocessed training data.
+- empirical leaf distributions that interpolate continuous numeric values by
+  default while preserving observed codes for discrete variables.
 
 SeqTrees accepts pandas DataFrames and performs no internal preprocessing by
 default. Missing values are rejected and categorical columns must already be
 integer encoded. Set `preprocessor="ifcfill"` to opt into
 [ifcfill](https://github.com/EulerLettersAI/ifcfill) imputation and categorical
 label encoding. IFCFill is the only supported internal preprocessor.
+With IFCFill 0.5.1, generated missingness flags are modelled as discrete
+variables so missingness can be learned jointly with the data.
 Use `model.get_preprocessed_data()` after fitting to inspect the exact
 model-ready DataFrame used by the sequential trees.
 
@@ -35,18 +37,23 @@ codes. Binary variables are ordinary discrete variables with codes `0` and `1`.
 
 ## Continuous Variables
 
-SeqTrees' default sampling strategy is empirical: every generated value is one
-of the values observed in the transformed training data. For continuous float
-variables, and for integer variables detected from DataFrame input, you can opt
-into interpolation inside the reached leaf distribution:
+SeqTrees' default sampling strategy is `"interpolate"`. Continuous float
+variables, and numeric integer variables detected by IFCFill, can generate
+interpolated values inside the reached distribution. Discrete variables still
+sample observed category codes:
 
 ```python
 model = SequentialTreeSynthesizer(
-    continuous_strategy="interpolate",
     continuous_columns=["age", "bmi"],
     discrete_columns=["sex_code", "risk_code"],
 )
 ```
+
+!!! warning "Training-record exposure with empirical sampling"
+
+    Setting `continuous_strategy="empirical"` samples exact observed values and
+    can reproduce complete training records. This exposes training data; do not
+    use the empirical strategy when exact-record disclosure is unacceptable.
 
 SeqTrees can infer variable types when both `continuous_columns` and
 `discrete_columns` are omitted: all-float columns become continuous and all-int
@@ -75,9 +82,9 @@ SeqTrees can use either:
 - `tree_backend="native"`: the pure-Python fallback with no required
   dependencies;
 - `tree_backend="lightgbm"`: LightGBM's histogram-based gradient boosting
-  regressor, using leaf-index buckets for empirical sampling;
+  regressor, using leaf-index buckets for empirical or interpolated sampling;
 - `tree_backend="sklearn"`: scikit-learn's compiled `DecisionTreeRegressor`
-  with empirical leaf sampling;
+  with empirical or interpolated leaf sampling;
 - `tree_backend="auto"`: use LightGBM when installed, then scikit-learn, and
   otherwise fall back to the native backend.
 

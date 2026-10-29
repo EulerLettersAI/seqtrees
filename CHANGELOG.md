@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Changed the default `continuous_strategy` from `"empirical"` to
+  `"interpolate"`.
+- Added documentation warnings that empirical sampling can expose complete
+  training records.
+- Updated the runtime dependency to `ifcfill==0.5.1` and modelled its generated
+  missingness flags as discrete variables.
+- Changed the package development status from Alpha to Beta.
+
 ## 0.3.0 - 2026-10-21
 
 - Updated the runtime dependency to `ifcfill==0.4.0`.

@@ -85,27 +85,29 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
 
         self.assertEqual(list(model.sample(2, as_dataframe=False)[0]), list(DATA.columns))
 
-    def test_float_columns_are_empirical_by_default(self):
+    def test_float_columns_are_interpolated_by_default(self):
         data = pd.DataFrame([
-            {"score": 0.1, "risk_code": 0},
-            {"score": 0.4, "risk_code": 0},
-            {"score": 0.8, "risk_code": 1},
+            {"score": 0.0, "risk_code": 0},
+            {"score": 10.0, "risk_code": 1},
         ])
         model = SequentialTreeSynthesizer(variable_order=["score", "risk_code"], min_samples_leaf=1).fit(data)
 
-        rows = model.sample(30, random_state=5, as_dataframe=False)
+        rows = model.sample(50, random_state=11, as_dataframe=False)
+        scores = [row["score"] for row in rows]
 
+        self.assertEqual(model.continuous_strategy, "interpolate")
         self.assertEqual(model.continuous_columns_, {"score"})
-        self.assertTrue(all(row["score"] in {0.1, 0.4, 0.8} for row in rows))
+        self.assertTrue(any(score not in {0.0, 10.0} for score in scores))
+        self.assertTrue(all(0.0 <= score <= 10.0 for score in scores))
 
-    def test_interpolation_can_generate_new_float_values(self):
+    def test_empirical_strategy_only_samples_observed_float_values(self):
         data = pd.DataFrame([
             {"score": 0.0, "risk_code": 0},
             {"score": 10.0, "risk_code": 1},
         ])
         model = SequentialTreeSynthesizer(
             variable_order=["score", "risk_code"],
-            continuous_strategy="interpolate",
+            continuous_strategy="empirical",
             continuous_columns=["score"],
             discrete_columns=["risk_code"],
             min_samples_leaf=1,
@@ -114,8 +116,7 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         rows = model.sample(50, random_state=11, as_dataframe=False)
         scores = [row["score"] for row in rows]
 
-        self.assertTrue(any(score not in {0.0, 10.0} for score in scores))
-        self.assertTrue(all(0.0 <= score <= 10.0 for score in scores))
+        self.assertTrue(all(score in {0.0, 10.0} for score in scores))
 
     def test_integer_code_columns_are_not_inferred_continuous(self):
         model = SequentialTreeSynthesizer(continuous_strategy="interpolate", min_samples_leaf=1).fit(DATA)
@@ -225,10 +226,19 @@ class SequentialTreeSynthesizerTest(unittest.TestCase):
         data.loc[rng.choice(n, 40, replace=False), "group"] = None
 
         model = SequentialTreeSynthesizer(
-            min_samples_leaf=1, random_state=1, preprocessor="ifcfill"
+            variable_order=["value", "score", "group"],
+            min_samples_leaf=1,
+            random_state=1,
+            preprocessor="ifcfill",
         ).fit(data)
         sample = model.sample(n, random_state=2)
 
+        self.assertEqual(model.missing_flag_columns_, {"value__ifc_missing"})
+        self.assertIn("value__ifc_missing", model.discrete_columns_)
+        self.assertEqual(
+            model.get_variable_order(),
+            ["value", "value__ifc_missing", "score", "group"],
+        )
         for column in ("value", "group"):
             train_rate = data[column].isna().mean()
             sample_rate = sample[column].isna().mean()
