@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "SeqTrees: sequential tree models for tabular synthetic data generation"
+abstract: >-
+  SeqTrees generates synthetic tabular data by factorizing a table into a
+  sequence of conditional distributions, each modeled by a decision tree
+  trained on the preceding variables.
+authors:
+  - given-names: Samer
+    family-names: El Kababji
+    email: skababji@gmail.com
+    orcid: "https://orcid.org/0000-0002-7642-2280"
+    affiliation: "Department of Data Science, Princess Sumaya University for Technology, Amman, Jordan"
+    website: "https://eulerlettersai.github.io/"
+version: 0.4.3
+date-released: "2026-10-29"
+license: Apache-2.0
+doi: "10.5281/zenodo.23817040"
+repository-code: "https://github.com/EulerLettersAI/seqtrees"
+url: "https://eulerlettersai.github.io/seqtrees"
+keywords:
+  - synthetic data
+  - tabular data
+  - decision trees
+  - privacy
+references:
+  - type: article
+    title: "Optimizing the Synthesis of Clinical Trial Data Using Sequential Trees"
+    authors:
+      - given-names: Khaled
+        family-names: El Emam
+      - given-names: Lucy
+        family-names: Mosquera
+      - given-names: Chaoyi
+        family-names: Zheng
+    journal: "Journal of the American Medical Informatics Association"
+    volume: 28
+    issue: 1
+    start: 3
+    end: 13
+    year: 2021
+    doi: "10.1093/jamia/ocaa249"
